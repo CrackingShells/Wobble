@@ -33,7 +33,7 @@ pip install -r requirements-dev.txt  # If exists
 
 # Verify installation
 python -c "import wobble; print('Development setup complete')"
-python -m wobble.cli --help
+wobble --help
 ```
 
 ### Branch Management
@@ -230,11 +230,11 @@ class TestNewFeature(unittest.TestCase):
 **Local Testing**:
 ```bash
 # Run all tests
-python -m wobble.cli --verbose
+wobble --verbose
 
 # Run specific categories
-python -m wobble.cli --category regression
-python -m wobble.cli --category integration
+wobble --category regression
+wobble --category integration
 
 # Run with coverage (if coverage tool available)
 coverage run -m wobble.cli
@@ -244,14 +244,14 @@ coverage report
 **Pre-commit Validation**:
 ```bash
 # Comprehensive test suite
-python -m wobble.cli --verbose
+wobble --verbose
 
 # Check for import issues
 python -c "import wobble; print('All imports successful')"
 
 # Validate CLI functionality
-python -m wobble.cli --help
-python -m wobble.cli --discover-only
+wobble --help
+wobble --discover-only
 ```
 
 ### Test Quality Standards

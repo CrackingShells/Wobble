@@ -34,7 +34,7 @@ Test that wobble is correctly installed:
 python -c "import wobble; print('Wobble installed successfully')"
 
 # Test CLI access
-python -m wobble.cli --help
+wobble --help
 ```
 
 ## Basic Usage
@@ -45,13 +45,13 @@ Execute all tests in your repository:
 
 ```bash
 # Standard output with timing
-python -m wobble.cli
+wobble
 
 # Verbose output with detailed information
-python -m wobble.cli --verbose
+wobble --verbose
 
 # Quiet output (errors only)
-python -m wobble.cli --quiet
+wobble --quiet
 ```
 
 ### Test Discovery
@@ -60,13 +60,13 @@ Understand what tests wobble finds in your repository:
 
 ```bash
 # Discover tests without running them
-python -m wobble.cli --discover-only
+wobble --discover-only
 
 # List available test categories
-python -m wobble.cli --list-categories
+wobble --list-categories
 
 # JSON output for programmatic use
-python -m wobble.cli --discover-only --format json
+wobble --discover-only --format json
 ```
 
 ### Category-Based Execution
@@ -75,13 +75,13 @@ Run specific test categories:
 
 ```bash
 # Run only regression tests
-python -m wobble.cli --category regression
+wobble --category regression
 
 # Run only integration tests
-python -m wobble.cli --category integration
+wobble --category integration
 
 # Run only development tests
-python -m wobble.cli --category development
+wobble --category development
 ```
 
 ### Filtering Options
@@ -90,13 +90,13 @@ Control which tests execute:
 
 ```bash
 # Exclude slow-running tests
-python -m wobble.cli --exclude-slow
+wobble --exclude-slow
 
 # Exclude tests marked for CI skip
-python -m wobble.cli --exclude-ci
+wobble --exclude-ci
 
 # Combine filters
-python -m wobble.cli --category regression --exclude-slow
+wobble --category regression --exclude-slow
 ```
 
 ## Output Formats
@@ -106,7 +106,7 @@ python -m wobble.cli --category regression --exclude-slow
 Default human-readable output with colors and timing:
 
 ```bash
-python -m wobble.cli --verbose
+wobble --verbose
 ```
 
 Example output:
@@ -139,7 +139,7 @@ Overall result: FAILED
 Machine-readable output for CI/CD integration:
 
 ```bash
-python -m wobble.cli --format json
+wobble --format json
 ```
 
 Example output:
@@ -160,7 +160,7 @@ Example output:
 Compact output for quick feedback:
 
 ```bash
-python -m wobble.cli --format minimal
+wobble --format minimal
 ```
 
 Example output:
@@ -184,10 +184,10 @@ Override automatic detection:
 
 ```bash
 # Specify repository path
-python -m wobble.cli --path /path/to/repository
+wobble --path /path/to/repository
 
 # Use relative path
-python -m wobble.cli --path ../other-project
+wobble --path ../other-project
 ```
 
 ### Test Directory Discovery
@@ -206,13 +206,13 @@ During active development:
 
 ```bash
 # Quick feedback during development
-python -m wobble.cli --category development --format minimal
+wobble --category development --format minimal
 
 # Detailed output for debugging
-python -m wobble.cli --category development --verbose
+wobble --category development --verbose
 
 # Skip slow tests for rapid iteration
-python -m wobble.cli --exclude-slow
+wobble --exclude-slow
 ```
 
 ### CI/CD Integration
@@ -221,13 +221,13 @@ For continuous integration:
 
 ```bash
 # JSON output for parsing
-python -m wobble.cli --format json --exclude-ci
+wobble --format json --exclude-ci
 
 # Regression tests only
-python -m wobble.cli --category regression --format json
+wobble --category regression --format json
 
 # All tests with machine-readable output
-python -m wobble.cli --format json
+wobble --format json
 ```
 
 ### Pre-commit Validation
@@ -236,10 +236,10 @@ Before committing changes:
 
 ```bash
 # Run all tests with verbose output
-python -m wobble.cli --verbose
+wobble --verbose
 
 # Focus on regression tests
-python -m wobble.cli --category regression --verbose
+wobble --category regression --verbose
 ```
 
 ## Troubleshooting

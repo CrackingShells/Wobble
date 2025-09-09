@@ -272,10 +272,10 @@ def test_important_feature(self):
 **Step 3**: Validate with wobble
 ```bash
 # Test discovery
-python -m wobble.cli --discover-only
+wobble --discover-only
 
 # Run by category
-python -m wobble.cli --category regression
+wobble --category regression
 ```
 
 ### Gradual Adoption
@@ -291,13 +291,13 @@ python -m wobble.cli --category regression
 
 ```bash
 # Verify test discovery
-python -m wobble.cli --discover-only --format json
+wobble --discover-only --format json
 
 # Check category distribution
-python -m wobble.cli --list-categories
+wobble --list-categories
 
 # Validate specific categories
-python -m wobble.cli --category regression --discover-only
+wobble --category regression --discover-only
 ```
 
 ### Quality Checks

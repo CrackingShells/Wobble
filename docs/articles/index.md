@@ -72,17 +72,17 @@ Wobble provides a unified testing experience across the CrackingShells organizat
 
 2. **Run tests** with enhanced output:
    ```bash
-   python -m wobble.cli --verbose
+   wobble --verbose
    ```
 
 3. **Filter by category**:
    ```bash
-   python -m wobble.cli --category regression
+   wobble --category regression
    ```
 
 4. **Get JSON output** for CI integration:
    ```bash
-   python -m wobble.cli --format json
+   wobble --format json
    ```
 
 ## Repository Support

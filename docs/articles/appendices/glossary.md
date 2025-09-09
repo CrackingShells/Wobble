@@ -32,7 +32,7 @@ Process of locating and categorizing test files and methods within a repository.
 ### Framework Components
 
 **CLI Interface**
-Command-line interface providing access to wobble functionality. Supports test execution, filtering, output formatting, and discovery operations through `python -m wobble.cli`.
+Command-line interface providing access to wobble functionality. Supports test execution, filtering, output formatting, and discovery operations through `wobble`.
 
 **Discovery Engine**
 Core component responsible for locating test files, extracting metadata, and categorizing tests. Supports both hierarchical and flat repository structures.

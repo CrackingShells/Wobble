@@ -91,7 +91,7 @@ pip install -r requirements.txt
 
 # Verify parallel functionality
 python -m unittest discover tests -v > unittest_results.txt
-python -m wobble.cli --verbose > wobble_results.txt
+wobble --verbose > wobble_results.txt
 
 # Compare results
 diff unittest_results.txt wobble_results.txt
@@ -137,7 +137,7 @@ mv tests/test_api.py tests/integration/
 mv tests/test_new_features.py tests/development/
 
 # Verify discovery still works
-python -m wobble.cli --discover-only
+wobble --discover-only
 ```
 
 **Phase 4: CI/CD Integration (Week 4)**
@@ -151,7 +151,7 @@ Update CI/CD to use wobble:
 
 # After
 - name: Run tests
-  run: python -m wobble.cli --format json --exclude-ci
+  run: wobble --format json --exclude-ci
 ```
 
 **Phase 5: Full Migration (Week 5)**
@@ -304,7 +304,7 @@ mkdir -p tests/regression tests/integration tests/development
 # (This would be customized based on specific repository)
 
 # Verify all tests still discoverable
-python -m wobble.cli --discover-only
+wobble --discover-only
 
 # If successful, remove backup
 # rm -rf tests_backup/
@@ -347,9 +347,9 @@ jobs:
     - name: Install dependencies
       run: pip install -e .
     - name: Run regression tests
-      run: python -m wobble.cli --category regression --format json
+      run: wobble --category regression --format json
     - name: Run integration tests
-      run: python -m wobble.cli --category integration --format json --exclude-ci
+      run: wobble --category integration --format json --exclude-ci
     - name: Upload test results
       uses: actions/upload-artifact@v3
       if: always()
@@ -366,7 +366,7 @@ jobs:
 ```bash
 # Compare test counts
 OLD_COUNT=$(python -m unittest discover tests --dry-run 2>/dev/null | grep -c "test_")
-NEW_COUNT=$(python -m wobble.cli --discover-only --format json | jq '.total_tests')
+NEW_COUNT=$(wobble --discover-only --format json | jq '.total_tests')
 
 echo "Old test count: $OLD_COUNT"
 echo "New test count: $NEW_COUNT"
@@ -382,7 +382,7 @@ fi
 ```bash
 # Run same tests with both runners and compare results
 python -m unittest discover tests -v 2>&1 | grep -E "(FAIL|ERROR|OK)" > unittest_summary.txt
-python -m wobble.cli --verbose 2>&1 | grep -E "(✓|✗|PASS|FAIL)" > wobble_summary.txt
+wobble --verbose 2>&1 | grep -E "(✓|✗|PASS|FAIL)" > wobble_summary.txt
 
 # Manual comparison of results
 echo "Compare these files for equivalent results:"
@@ -399,7 +399,7 @@ echo "Timing existing test runner:"
 time python -m unittest discover tests
 
 echo "Timing wobble test runner:"
-time python -m wobble.cli
+time wobble
 
 # Acceptable if wobble is within 20% of existing runner
 ```
@@ -411,7 +411,7 @@ echo "Memory usage - existing runner:"
 /usr/bin/time -v python -m unittest discover tests 2>&1 | grep "Maximum resident set size"
 
 echo "Memory usage - wobble runner:"
-/usr/bin/time -v python -m wobble.cli 2>&1 | grep "Maximum resident set size"
+/usr/bin/time -v wobble 2>&1 | grep "Maximum resident set size"
 ```
 
 ## Rollback Procedures

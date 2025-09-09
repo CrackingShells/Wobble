@@ -8,7 +8,7 @@ This article covers:
 ## Command Syntax
 
 ```bash
-python -m wobble.cli [OPTIONS]
+wobble [OPTIONS]
 ```
 
 ## Test Selection Options
@@ -25,13 +25,13 @@ Control which test categories to execute:
 **Examples:**
 ```bash
 # Run only regression tests
-python -m wobble.cli --category regression
+wobble --category regression
 
 # Run integration tests
-python -m wobble.cli -c integration
+wobble -c integration
 
 # Run all tests (default)
-python -m wobble.cli --category all
+wobble --category all
 ```
 
 ### Test Filtering
@@ -46,13 +46,13 @@ Exclude specific types of tests:
 **Examples:**
 ```bash
 # Skip slow tests for faster feedback
-python -m wobble.cli --exclude-slow
+wobble --exclude-slow
 
 # Skip CI-incompatible tests
-python -m wobble.cli --exclude-ci
+wobble --exclude-ci
 
 # Combine filters
-python -m wobble.cli --category regression --exclude-slow --exclude-ci
+wobble --category regression --exclude-slow --exclude-ci
 ```
 
 ### File Pattern Matching
@@ -67,13 +67,13 @@ Specify test file patterns:
 **Examples:**
 ```bash
 # Use default pattern (test*.py)
-python -m wobble.cli
+wobble
 
 # Custom pattern for different naming convention
-python -m wobble.cli --pattern "*_test.py"
+wobble --pattern "*_test.py"
 
 # Specific file pattern
-python -m wobble.cli --pattern "test_core*.py"
+wobble --pattern "test_core*.py"
 ```
 
 ## Output Control Options
@@ -89,7 +89,7 @@ Choose output format:
 
 **Standard Format** (default):
 ```bash
-python -m wobble.cli --format standard
+wobble --format standard
 ```
 - Clean, readable output with colors
 - Test results with timing information
@@ -97,7 +97,7 @@ python -m wobble.cli --format standard
 
 **Verbose Format**:
 ```bash
-python -m wobble.cli --format verbose
+wobble --format verbose
 ```
 - Detailed test information
 - Metadata display
@@ -105,7 +105,7 @@ python -m wobble.cli --format verbose
 
 **JSON Format**:
 ```bash
-python -m wobble.cli --format json
+wobble --format json
 ```
 - Machine-readable output
 - Structured data for CI/CD integration
@@ -113,7 +113,7 @@ python -m wobble.cli --format json
 
 **Minimal Format**:
 ```bash
-python -m wobble.cli --format minimal
+wobble --format minimal
 ```
 - Compact dot notation (., F, E, S)
 - Quick feedback for development
@@ -130,10 +130,10 @@ Control colored output:
 **Examples:**
 ```bash
 # Disable colors for logging or CI
-python -m wobble.cli --no-color
+wobble --no-color
 
 # Force colors (default when terminal supports it)
-python -m wobble.cli
+wobble
 ```
 
 ### Verbosity Control
@@ -150,16 +150,16 @@ Adjust output detail level:
 **Examples:**
 ```bash
 # Standard verbosity
-python -m wobble.cli
+wobble
 
 # Increased verbosity
-python -m wobble.cli --verbose
+wobble --verbose
 
 # Maximum verbosity
-python -m wobble.cli -vv
+wobble -vv
 
 # Quiet mode (errors only)
-python -m wobble.cli --quiet
+wobble --quiet
 ```
 
 ## Discovery Options
@@ -176,13 +176,13 @@ Analyze tests without executing them:
 **Examples:**
 ```bash
 # See what tests would be discovered
-python -m wobble.cli --discover-only
+wobble --discover-only
 
 # Get JSON summary of discovered tests
-python -m wobble.cli --discover-only --format json
+wobble --discover-only --format json
 
 # List available categories
-python -m wobble.cli --list-categories
+wobble --list-categories
 ```
 
 ## Repository Options
@@ -198,16 +198,16 @@ Control repository location:
 **Examples:**
 ```bash
 # Use current directory (default)
-python -m wobble.cli
+wobble
 
 # Specify absolute path
-python -m wobble.cli --path /home/user/projects/myproject
+wobble --path /home/user/projects/myproject
 
 # Specify relative path
-python -m wobble.cli --path ../other-project
+wobble --path ../other-project
 
 # Use environment variable
-python -m wobble.cli --path $PROJECT_ROOT
+wobble --path $PROJECT_ROOT
 ```
 
 ## Environment Variables
@@ -239,51 +239,51 @@ Wobble returns standard exit codes:
 
 **Quick development feedback:**
 ```bash
-python -m wobble.cli --category development --format minimal --exclude-slow
+wobble --category development --format minimal --exclude-slow
 ```
 
 **Detailed debugging:**
 ```bash
-python -m wobble.cli --category development --format verbose
+wobble --category development --format verbose
 ```
 
 **Pre-commit validation:**
 ```bash
-python -m wobble.cli --category regression --verbose
+wobble --category regression --verbose
 ```
 
 ### CI/CD Integration
 
 **Basic CI execution:**
 ```bash
-python -m wobble.cli --format json --no-color
+wobble --format json --no-color
 ```
 
 **Regression testing:**
 ```bash
-python -m wobble.cli --category regression --format json --exclude-ci
+wobble --category regression --format json --exclude-ci
 ```
 
 **Full test suite:**
 ```bash
-python -m wobble.cli --format json --exclude-ci
+wobble --format json --exclude-ci
 ```
 
 ### Analysis and Reporting
 
 **Test discovery analysis:**
 ```bash
-python -m wobble.cli --discover-only --format json > test_inventory.json
+wobble --discover-only --format json > test_inventory.json
 ```
 
 **Category breakdown:**
 ```bash
-python -m wobble.cli --list-categories
+wobble --list-categories
 ```
 
 **Performance analysis:**
 ```bash
-python -m wobble.cli --verbose --format json > test_results.json
+wobble --verbose --format json > test_results.json
 ```
 
 ## Advanced Usage
@@ -294,13 +294,13 @@ Most options can be combined for specific workflows:
 
 ```bash
 # Fast development iteration
-python -m wobble.cli -c development -f minimal --exclude-slow -q
+wobble -c development -f minimal --exclude-slow -q
 
 # Comprehensive CI testing
-python -m wobble.cli -f json --no-color --exclude-ci -v
+wobble -f json --no-color --exclude-ci -v
 
 # Detailed regression analysis
-python -m wobble.cli -c regression -f verbose --path ../project
+wobble -c regression -f verbose --path ../project
 ```
 
 ### Scripting Integration
@@ -310,7 +310,7 @@ Use wobble in shell scripts:
 ```bash
 #!/bin/bash
 # Run tests and capture results
-if python -m wobble.cli --format json --quiet > results.json; then
+if wobble --format json --quiet > results.json; then
     echo "All tests passed"
     exit 0
 else
@@ -340,7 +340,7 @@ Configure wobble in your IDE:
 
 **Command not found:**
 - Ensure wobble is installed: `pip install wobble`
-- Use full module path: `python -m wobble.cli`
+- Use full module path: `wobble`
 
 **No tests discovered:**
 - Check test file naming (must start with `test_`)

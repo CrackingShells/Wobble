@@ -55,7 +55,7 @@ pip install -e .
 
 # Verify installation
 python -c "import wobble; print('Wobble installed successfully')"
-python -m wobble.cli --help
+wobble --help
 ```
 
 ### Development Dependencies
@@ -186,7 +186,7 @@ chmod +x .git/hooks/pre-commit
 **Run All Tests**:
 ```bash
 # Use wobble to test itself
-python -m wobble.cli --verbose
+wobble --verbose
 
 # Alternative: use unittest directly
 python -m unittest discover tests -v
@@ -195,13 +195,13 @@ python -m unittest discover tests -v
 **Run Specific Test Categories**:
 ```bash
 # Run only regression tests
-python -m wobble.cli --category regression
+wobble --category regression
 
 # Run only integration tests
-python -m wobble.cli --category integration
+wobble --category integration
 
 # Run development tests
-python -m wobble.cli --category development
+wobble --category development
 ```
 
 **Test Individual Modules**:
@@ -229,10 +229,10 @@ import pdb; pdb.set_trace()  # Python debugger
 **Verbose Output for Debugging**:
 ```bash
 # Maximum verbosity
-python -m wobble.cli --verbose --format verbose
+wobble --verbose --format verbose
 
 # JSON output for analysis
-python -m wobble.cli --format json > debug_results.json
+wobble --format json > debug_results.json
 ```
 
 ## Validation Procedures
@@ -263,14 +263,14 @@ print('All imports successful')
 **CLI Functionality**:
 ```bash
 # Test CLI help
-python -m wobble.cli --help
+wobble --help
 
 # Test discovery
-python -m wobble.cli --discover-only
+wobble --discover-only
 
 # Test different output formats
-python -m wobble.cli --format json
-python -m wobble.cli --format minimal
+wobble --format json
+wobble --format minimal
 ```
 
 **Cross-Platform Testing**:
@@ -288,7 +288,7 @@ print(f'Repository root: {detect_repository_root()}')
 **Execution Timing**:
 ```bash
 # Time test execution
-time python -m wobble.cli
+time wobble
 
 # Compare with unittest
 time python -m unittest discover tests -v
@@ -297,7 +297,7 @@ time python -m unittest discover tests -v
 **Memory Usage** (if available):
 ```bash
 # Monitor memory usage
-/usr/bin/time -v python -m wobble.cli  # Linux/macOS
+/usr/bin/time -v wobble  # Linux/macOS
 ```
 
 ## Development Best Practices

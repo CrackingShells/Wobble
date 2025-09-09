@@ -49,7 +49,7 @@ pip install -r requirements.txt
 **Step 3**: Verify installation
 ```bash
 python -c "import wobble; print('Wobble installed successfully')"
-python -m wobble.cli --help
+wobble --help
 ```
 
 ### Basic Integration
@@ -57,10 +57,10 @@ python -m wobble.cli --help
 **Test wobble with existing tests**:
 ```bash
 # Discover existing tests
-python -m wobble.cli --discover-only
+wobble --discover-only
 
 # Run all tests with wobble
-python -m wobble.cli --verbose
+wobble --verbose
 
 # Compare with existing test runner
 python -m unittest discover tests -v
@@ -85,7 +85,7 @@ python -m unittest discover tests -v
 python -m unittest discover tests -v
 
 # New wobble approach
-python -m wobble.cli --verbose
+wobble --verbose
 
 # Compare results
 ```
@@ -167,7 +167,7 @@ jobs:
         
     - name: Run tests with wobble
       run: |
-        python -m wobble.cli --format json --exclude-ci > test_results.json
+        wobble --format json --exclude-ci > test_results.json
         
     - name: Upload test results
       uses: actions/upload-artifact@v3
@@ -189,17 +189,17 @@ strategy:
 steps:
 - name: Run category tests
   run: |
-    python -m wobble.cli --category ${{ matrix.test-category }} --format json
+    wobble --category ${{ matrix.test-category }} --format json
 ```
 
 **Conditional test execution**:
 ```yaml
 - name: Run regression tests
-  run: python -m wobble.cli --category regression --format json
+  run: wobble --category regression --format json
   
 - name: Run integration tests
   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-  run: python -m wobble.cli --category integration --format json --exclude-slow
+  run: wobble --category integration --format json --exclude-slow
 ```
 
 ### Other CI Systems
@@ -211,7 +211,7 @@ pipeline {
     stages {
         stage('Test') {
             steps {
-                sh 'python -m wobble.cli --format json --exclude-ci'
+                sh 'wobble --format json --exclude-ci'
             }
             post {
                 always {
@@ -227,7 +227,7 @@ pipeline {
 ```yaml
 test:
   script:
-    - python -m wobble.cli --format json --exclude-ci
+    - wobble --format json --exclude-ci
   artifacts:
     reports:
       junit: test_results.json
@@ -286,10 +286,10 @@ project/
 **Development environment**:
 ```bash
 # Quick feedback during development
-alias wt='python -m wobble.cli --category development --format minimal --exclude-slow'
+alias wt='wobble --category development --format minimal --exclude-slow'
 
 # Detailed debugging
-alias wtv='python -m wobble.cli --category development --verbose'
+alias wtv='wobble --category development --verbose'
 ```
 
 **CI environment**:
@@ -299,7 +299,7 @@ export NO_COLOR=1
 export WOBBLE_PATH=/workspace
 
 # Run tests
-python -m wobble.cli --format json --exclude-ci
+wobble --format json --exclude-ci
 ```
 
 ### IDE Integration
@@ -346,14 +346,14 @@ python -m wobble.cli --format json --exclude-ci
 ```bash
 # Compare test counts
 python -m unittest discover tests --dry-run | wc -l
-python -m wobble.cli --discover-only --format json | jq '.total_tests'
+wobble --discover-only --format json | jq '.total_tests'
 ```
 
 **Execution validation**:
 ```bash
 # Run same tests with both runners
 python -m unittest discover tests -v > unittest_results.txt
-python -m wobble.cli --verbose > wobble_results.txt
+wobble --verbose > wobble_results.txt
 
 # Compare results (should be equivalent)
 ```
@@ -366,13 +366,13 @@ python -m wobble.cli --verbose > wobble_results.txt
 time python -m unittest discover tests
 
 # Time wobble runner
-time python -m wobble.cli
+time wobble
 ```
 
 **Memory usage monitoring**:
 ```bash
 # Monitor memory usage during test execution
-/usr/bin/time -v python -m wobble.cli
+/usr/bin/time -v wobble
 ```
 
 ## Troubleshooting
