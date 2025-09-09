@@ -1,6 +1,6 @@
-"""{{PROJECT_NAME}} - {{PROJECT_DESCRIPTION}}
+"""Wobble - Centralized testing package for Cracking Shells
 
-This package provides [brief description of main functionality].
+This package provides centralized testing framework functionality for the CrackingShells organization.
 """
 
 # Version will be managed by semantic-release
@@ -11,7 +11,7 @@ __version__ = "0.1.0"
 # from .core import main_function
 # from .utils import helper_function
 
-# Define what gets imported with "from {{PACKAGE_NAME}} import *"
+# Define what gets imported with "from wobble import *"
 __all__ = [
     # Add public API functions/classes here
     # Example: "main_function", "helper_function"

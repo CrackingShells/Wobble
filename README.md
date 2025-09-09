@@ -1,27 +1,27 @@
-# {{PROJECT_NAME}}
+# Wobble
 
-{{PROJECT_DESCRIPTION}}
+Centralized testing package for Cracking Shells
 
 ## Installation
 
 ### From Source
 
 ```bash
-git clone https://github.com/CrackingShells/{{PROJECT_NAME}}.git
-cd {{PROJECT_NAME}}
+git clone https://github.com/CrackingShells/Wobble.git
+cd Wobble
 pip install -e .
 ```
 
 ### From PyPI (when available)
 
 ```bash
-pip install {{PROJECT_NAME}}
+pip install wobble
 ```
 
 ## Quick Start
 
 ```python
-import {{PACKAGE_NAME}}
+import wobble
 
 # Add basic usage example here
 ```
@@ -32,8 +32,8 @@ import {{PACKAGE_NAME}}
 
 ```bash
 # Clone the repository
-git clone https://github.com/CrackingShells/{{PROJECT_NAME}}.git
-cd {{PROJECT_NAME}}
+git clone https://github.com/CrackingShells/Wobble.git
+cd Wobble
 
 # Install in development mode
 pip install -e .
@@ -81,6 +81,6 @@ This project is licensed under the GNU Affero General Public License v3 - see th
 
 ## Links
 
-- **Homepage**: https://github.com/CrackingShells/{{PROJECT_NAME}}
-- **Bug Reports**: https://github.com/CrackingShells/{{PROJECT_NAME}}/issues
+- **Homepage**: https://github.com/CrackingShells/Wobble
+- **Bug Reports**: https://github.com/CrackingShells/Wobble/issues
 - **Documentation**: [Coming Soon]
