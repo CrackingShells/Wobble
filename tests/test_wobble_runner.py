@@ -157,18 +157,17 @@ class TestWobbleTestResult(unittest.TestCase):
         class TimedTestCase(unittest.TestCase):
             def test_timed(self):
                 time.sleep(0.01)  # 10ms delay
-        
+
         test_case = TimedTestCase('test_timed')
-        
+
         # Start and stop test
         self.result.startTest(test_case)
         time.sleep(0.01)  # Simulate test execution
         self.result.stopTest(test_case)
-        
-        # Check that timing was recorded
-        test_id = self.result._get_test_id(test_case)
-        self.assertIn(test_id, self.result.test_timings)
-        self.assertGreater(self.result.test_timings[test_id], 0.005)  # At least 5ms
+
+        # Check that timing was recorded using the test case object as key (actual implementation)
+        self.assertIn(test_case, self.result.test_timings)
+        self.assertGreater(self.result.test_timings[test_case], 0.005)  # At least 5ms
     
     def test_success_tracking(self):
         """Test tracking of successful tests."""
