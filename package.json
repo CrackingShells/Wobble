@@ -1,5 +1,5 @@
 {
-  "name": "{{PROJECT_NAME}}",
+  "name": "wobble",
   "private": true,
   "scripts": {
     "commit": "cz",
