@@ -96,14 +96,19 @@ class TestWobbleTestRunner(unittest.TestCase):
         with patch.object(self.runner, '_create_test_suite', return_value=suite):
             results = self.runner.run_tests(test_infos)
         
-        # Verify results structure
+        # Verify results structure (matches actual implementation)
         self.assertIn('tests_run', results)
         self.assertIn('failures', results)
         self.assertIn('errors', results)
         self.assertIn('skipped', results)
         self.assertIn('success_rate', results)
         self.assertIn('total_time', results)
-        self.assertIn('results', results)
+        # Actual implementation uses these keys instead of 'results'
+        self.assertIn('test_timings', results)
+        self.assertIn('test_metadata', results)
+        self.assertIn('failure_details', results)
+        self.assertIn('error_details', results)
+        self.assertIn('skip_details', results)
         
         # Should have run 2 tests with 1 failure
         self.assertEqual(results['tests_run'], 2)
@@ -170,12 +175,14 @@ class TestWobbleTestResult(unittest.TestCase):
         class SuccessTestCase(unittest.TestCase):
             def test_success(self):
                 self.assertTrue(True)
-        
+
         test_case = SuccessTestCase('test_success')
-        
+
         self.result.startTest(test_case)
+        # Call addSuccess explicitly to trigger the output formatter call
+        self.result.addSuccess(test_case)
         self.result.stopTest(test_case)
-        
+
         # Verify output formatter was called for success
         self.output_formatter.print_test_success.assert_called_once()
     

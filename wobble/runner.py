@@ -70,6 +70,17 @@ class WobbleTestResult(unittest.TestResult):
         super().addSkip(test, reason)
         self.output_formatter.print_test_skip(test, reason, self.test_timings.get(test, 0))
 
+    def _get_test_id(self, test):
+        """Get a unique identifier for a test case.
+
+        Args:
+            test: unittest.TestCase instance
+
+        Returns:
+            String identifier for the test
+        """
+        return f"{test.__class__.__module__}.{test.__class__.__name__}.{test._testMethodName}"
+
 
 class TestRunner:
     """Core test runner for wobble framework."""

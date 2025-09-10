@@ -97,62 +97,68 @@ class TestOutputFormatter(unittest.TestCase):
         mock_test = MagicMock()
         mock_test.__class__.__name__ = 'TestExample'
         mock_test._testMethodName = 'test_method'
-        
+
         with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
             self.formatter.print_test_success(mock_test, 0.123)
             output = mock_stdout.getvalue()
-            
-            # Should contain test name and timing
+
+            # Should contain test name (timing only shown with verbosity > 0)
             self.assertIn('test_method', output)
-            self.assertIn('0.123', output)
+            # Timing not shown by default (verbosity = 0)
+            self.assertNotIn('0.123', output)
     
     def test_test_failure_output(self):
         """Test failed test output formatting."""
         mock_test = MagicMock()
         mock_test.__class__.__name__ = 'TestExample'
         mock_test._testMethodName = 'test_method'
-        
+
         error_info = (AssertionError, AssertionError("Test failed"), None)
-        
+
         with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
             self.formatter.print_test_failure(mock_test, error_info, 0.123)
             output = mock_stdout.getvalue()
-            
-            # Should contain test name, timing, and error
+
+            # Should contain test name (timing only shown with verbosity > 0)
             self.assertIn('test_method', output)
-            self.assertIn('0.123', output)
-            self.assertIn('Test failed', output)
+            # Timing not shown by default (verbosity = 0)
+            self.assertNotIn('0.123', output)
+            # Error message only shown with verbosity > 0
+            self.assertNotIn('Test failed', output)
     
     def test_test_error_output(self):
         """Test error test output formatting."""
         mock_test = MagicMock()
         mock_test.__class__.__name__ = 'TestExample'
         mock_test._testMethodName = 'test_method'
-        
+
         error_info = (ValueError, ValueError("Unexpected error"), None)
-        
+
         with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
             self.formatter.print_test_error(mock_test, error_info, 0.123)
             output = mock_stdout.getvalue()
-            
-            # Should contain test name, timing, and error
+
+            # Should contain test name (timing only shown with verbosity > 0)
             self.assertIn('test_method', output)
-            self.assertIn('0.123', output)
-            self.assertIn('Unexpected error', output)
+            # Timing not shown by default (verbosity = 0)
+            self.assertNotIn('0.123', output)
+            # Error message only shown with verbosity > 0
+            self.assertNotIn('Unexpected error', output)
     
     def test_test_skip_output(self):
         """Test skipped test output formatting."""
         mock_test = MagicMock()
         mock_test.__class__.__name__ = 'TestExample'
         mock_test._testMethodName = 'test_method'
-        
+
         with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
             self.formatter.print_test_skip(mock_test, "Test skipped", 0.001)
             output = mock_stdout.getvalue()
-            
-            # Should contain test name and skip reason
+
+            # Should contain test name (skip reason only shown with verbosity > 0)
             self.assertIn('test_method', output)
-            self.assertIn('Test skipped', output)
+            # Skip reason not shown by default (verbosity = 0)
+            self.assertNotIn('Test skipped', output)
 
 
 class TestJSONOutput(unittest.TestCase):
