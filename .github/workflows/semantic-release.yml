@@ -27,11 +27,11 @@ jobs:
 
       - name: Run tests
         run: |
-          python -m unittest discover tests -v
+          wobble --verbose
 
       - name: Test basic import
         run: |
-          python -c "import {{PACKAGE_NAME}}; print('{{PROJECT_NAME}} package imports successfully')"
+          python -c "import wobble; print('wobble package imports successfully')"
 
   release:
     needs: test
