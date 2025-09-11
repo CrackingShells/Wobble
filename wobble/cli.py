@@ -319,13 +319,24 @@ def main() -> int:
 
     # Initialize components
     discovery_engine = TestDiscoveryEngine(args.path)
-    output_formatter = OutputFormatter(
-        format_type=args.format,
-        use_color=not args.no_color,
-        verbosity=args.verbose,
-        quiet=args.quiet,
-        file_outputs=file_configs
-    )
+
+    # Use EnhancedOutputFormatter if file outputs are configured
+    if file_configs:
+        from .enhanced_output import EnhancedOutputFormatter
+        output_formatter = EnhancedOutputFormatter(
+            format_type=args.format,
+            use_color=not args.no_color,
+            verbosity=args.verbose,
+            quiet=args.quiet,
+            file_outputs=file_configs
+        )
+    else:
+        output_formatter = OutputFormatter(
+            format_type=args.format,
+            use_color=not args.no_color,
+            verbosity=args.verbose,
+            quiet=args.quiet
+        )
     
     try:
         # Discover tests
@@ -364,21 +375,25 @@ def main() -> int:
         output_formatter.print_test_results(results)
         
         # Return appropriate exit code
-        if results.get('failures', 0) > 0 or results.get('errors', 0) > 0:
-            return 1
-        
-        return 0
-        
+        exit_code = 1 if (results.get('failures', 0) > 0 or results.get('errors', 0) > 0) else 0
+
+        return exit_code
+
     except KeyboardInterrupt:
         output_formatter.print_error("Test execution interrupted by user")
         return 130
-    
+
     except Exception as e:
         output_formatter.print_error(f"Unexpected error: {e}")
         if args.verbose > 1:
             import traceback
             traceback.print_exc()
         return 1
+
+    finally:
+        # Clean up enhanced output formatter if used
+        if hasattr(output_formatter, 'close'):
+            output_formatter.close()
 
 
 def version() -> str:

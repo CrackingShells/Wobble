@@ -7,16 +7,19 @@ output formatting and timing capabilities.
 import unittest
 import time
 import sys
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from io import StringIO
+from datetime import datetime
 
 from .output import OutputFormatter
+from .enhanced_output import EnhancedOutputFormatter
+from .data_structures import TestResult, TestStatus, ErrorInfo
 
 
 class WobbleTestResult(unittest.TestResult):
     """Enhanced test result class with timing and metadata tracking."""
 
-    def __init__(self, output_formatter: OutputFormatter):
+    def __init__(self, output_formatter: Union[OutputFormatter, EnhancedOutputFormatter]):
         super().__init__()
         self.output_formatter = output_formatter
         self.test_timings = {}
@@ -24,6 +27,7 @@ class WobbleTestResult(unittest.TestResult):
         self.start_time = None
         self.current_test = None
         self._test_execution_count = {}  # Track execution count per test
+        self.enhanced_mode = isinstance(output_formatter, EnhancedOutputFormatter)
 
     def startTest(self, test):
         """Called when a test starts."""
@@ -39,11 +43,18 @@ class WobbleTestResult(unittest.TestResult):
         if self._test_execution_count[test_id] == 1:
             test_method = getattr(test, test._testMethodName, None)
             if test_method:
-                from .decorators import get_test_metadata
-                self.test_metadata[test] = get_test_metadata(test_method)
+                try:
+                    from .decorators import get_test_metadata
+                    self.test_metadata[test] = get_test_metadata(test_method)
+                except ImportError:
+                    # Decorators module may not exist yet
+                    self.test_metadata[test] = {}
 
-        # Print test start if verbose
-        self.output_formatter.print_test_start(test)
+        # Notify output formatter of test start
+        if self.enhanced_mode:
+            self.output_formatter.notify_test_start(test)
+        else:
+            self.output_formatter.print_test_start(test)
 
     def stopTest(self, test):
         """Called when a test ends."""
@@ -77,24 +88,52 @@ class WobbleTestResult(unittest.TestResult):
         """Called when a test passes."""
         super().addSuccess(test)
         duration = self._calculate_current_test_duration()
-        self.output_formatter.print_test_success(test, duration)
+
+        if self.enhanced_mode:
+            # Create TestResult and notify enhanced formatter
+            test_result = self._create_test_result(test, TestStatus.PASS, duration)
+            self.output_formatter.notify_test_end(test_result)
+        else:
+            self.output_formatter.print_test_success(test, duration)
 
     def addError(self, test, err):
         """Called when a test has an error."""
         super().addError(test, err)
         duration = self._calculate_current_test_duration()
-        self.output_formatter.print_test_error(test, err, duration)
+
+        if self.enhanced_mode:
+            # Create TestResult with error info and notify enhanced formatter
+            error_info = self._create_error_info(err)
+            test_result = self._create_test_result(test, TestStatus.ERROR, duration, error_info)
+            self.output_formatter.notify_test_end(test_result)
+        else:
+            self.output_formatter.print_test_error(test, err, duration)
 
     def addFailure(self, test, err):
         """Called when a test fails."""
         super().addFailure(test, err)
         duration = self._calculate_current_test_duration()
-        self.output_formatter.print_test_failure(test, err, duration)
-    
+
+        if self.enhanced_mode:
+            # Create TestResult with error info and notify enhanced formatter
+            error_info = self._create_error_info(err)
+            test_result = self._create_test_result(test, TestStatus.FAIL, duration, error_info)
+            self.output_formatter.notify_test_end(test_result)
+        else:
+            self.output_formatter.print_test_failure(test, err, duration)
+
     def addSkip(self, test, reason):
         """Called when a test is skipped."""
         super().addSkip(test, reason)
-        self.output_formatter.print_test_skip(test, reason, self.test_timings.get(test, 0))
+        duration = self.test_timings.get(test, 0)
+
+        if self.enhanced_mode:
+            # Create TestResult for skip and notify enhanced formatter
+            test_result = self._create_test_result(test, TestStatus.SKIP, duration)
+            test_result.metadata['skip_reason'] = reason
+            self.output_formatter.notify_test_end(test_result)
+        else:
+            self.output_formatter.print_test_skip(test, reason, duration)
 
     def _get_test_id(self, test):
         """Get a unique identifier for a test case.
@@ -107,18 +146,61 @@ class WobbleTestResult(unittest.TestResult):
         """
         return f"{test.__class__.__module__}.{test.__class__.__name__}.{test._testMethodName}"
 
+    def _create_test_result(self, test, status: TestStatus, duration: float,
+                          error_info: Optional[ErrorInfo] = None) -> TestResult:
+        """Create a TestResult from a test case.
+
+        Args:
+            test: unittest.TestCase instance
+            status: Test status
+            duration: Test execution time
+            error_info: Optional error information
+
+        Returns:
+            TestResult instance
+        """
+        return TestResult(
+            name=test._testMethodName,
+            classname=test.__class__.__name__,
+            status=status,
+            duration=duration,
+            timestamp=datetime.now(),
+            metadata=self.test_metadata.get(test, {}),
+            error_info=error_info
+        )
+
+    def _create_error_info(self, err_info) -> ErrorInfo:
+        """Create ErrorInfo from error tuple.
+
+        Args:
+            err_info: Error information tuple (type, value, traceback)
+
+        Returns:
+            ErrorInfo instance
+        """
+        import traceback
+
+        exc_type, exc_value, exc_traceback = err_info
+
+        return ErrorInfo(
+            type=exc_type.__name__,
+            message=str(exc_value),
+            traceback=''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+        )
+
 
 class TestRunner:
     """Core test runner for wobble framework."""
-    
-    def __init__(self, output_formatter: OutputFormatter):
+
+    def __init__(self, output_formatter: Union[OutputFormatter, EnhancedOutputFormatter]):
         """Initialize the test runner.
-        
+
         Args:
             output_formatter: Output formatter instance for test results
         """
         self.output_formatter = output_formatter
         self.total_start_time = None
+        self.enhanced_mode = isinstance(output_formatter, EnhancedOutputFormatter)
         
     def run_tests(self, test_infos: List[Dict]) -> Dict[str, Any]:
         """Run a list of tests and return results.
@@ -145,10 +227,19 @@ class TestRunner:
         
         # Create custom test result
         result = WobbleTestResult(self.output_formatter)
-        
-        # Print test run header
-        self.output_formatter.print_test_run_header(len(test_infos))
-        
+
+        # Start test run (enhanced mode handles command reconstruction)
+        if self.enhanced_mode:
+            # Try to reconstruct the command from CLI args
+            try:
+                from .cli import reconstruct_command
+                command = reconstruct_command()
+            except:
+                command = "wobble"  # Fallback
+            self.output_formatter.start_test_run(command, len(test_infos))
+        else:
+            self.output_formatter.print_test_run_header(len(test_infos))
+
         # Run tests
         self.total_start_time = time.time()
         suite.run(result)
@@ -160,6 +251,11 @@ class TestRunner:
             successful_tests = result.testsRun - len(result.failures) - len(result.errors)
             success_rate = (successful_tests / result.testsRun) * 100.0
         
+        # End test run for enhanced mode
+        if self.enhanced_mode:
+            exit_code = 1 if (len(result.failures) > 0 or len(result.errors) > 0) else 0
+            self.output_formatter.end_test_run(exit_code)
+
         # Compile results
         results = {
             'tests_run': result.testsRun,
@@ -174,7 +270,7 @@ class TestRunner:
             'error_details': result.errors,
             'skip_details': result.skipped
         }
-        
+
         return results
     
     def _create_test_suite(self, test_infos: List[Dict]) -> unittest.TestSuite:
