@@ -58,31 +58,59 @@ class TestDiscoveryEngine:
     
     def _find_test_directories(self) -> List[Path]:
         """Find all directories containing tests.
-        
+
         Returns:
             List of Path objects pointing to test directories
         """
         test_dirs = []
-        
+        discovered_paths = set()  # Track discovered paths to prevent duplicates
+
         # Look for common test directory patterns
         common_patterns = [
             "tests",
-            "test", 
+            "test",
             "Tests",
             "Test"
         ]
-        
+
         for pattern in common_patterns:
             test_dir = self.root_path / pattern
             if test_dir.exists() and test_dir.is_dir():
-                test_dirs.append(test_dir)
-                
-                # Also check for subdirectories (hierarchical structure)
+                # Only add if not already discovered and contains actual test files
+                if test_dir not in discovered_paths and self._contains_test_files(test_dir):
+                    test_dirs.append(test_dir)
+                    discovered_paths.add(test_dir)
+
+                # Check for subdirectories (hierarchical structure)
                 for subdir in test_dir.iterdir():
-                    if subdir.is_dir() and not subdir.name.startswith('.'):
+                    if (subdir.is_dir() and
+                        not subdir.name.startswith('.') and
+                        not subdir.name.startswith('__') and  # Skip __pycache__ etc.
+                        subdir not in discovered_paths and
+                        self._contains_test_files(subdir)):
                         test_dirs.append(subdir)
-        
+                        discovered_paths.add(subdir)
+
         return test_dirs
+
+    def _contains_test_files(self, directory: Path) -> bool:
+        """Check if directory contains actual test files (not just compiled files).
+
+        Args:
+            directory: Directory to check
+
+        Returns:
+            True if directory contains .py test files, False otherwise
+        """
+        try:
+            for file_path in directory.iterdir():
+                if (file_path.is_file() and
+                    file_path.suffix == '.py' and
+                    file_path.name.startswith('test')):
+                    return True
+            return False
+        except (OSError, PermissionError):
+            return False
     
     def _discover_in_directory(self, directory: Path, pattern: str) -> None:
         """Discover tests in a specific directory.

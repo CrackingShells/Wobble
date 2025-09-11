@@ -37,21 +37,21 @@ def regression_test(func: Callable) -> Callable:
     return wrapper
 
 
-def integration_test(scope: str = "component") -> Callable:
+def integration_test(scope: str = "component"):
     """Mark test as integration test with scope specification.
-    
+
     Integration tests validate interactions between components or systems.
-    The scope parameter specifies the level of integration being tested.
-    
+    This decorator requires parentheses and supports scope specification.
+
     Args:
         scope: The scope of integration testing
                - "component": Tests interaction between internal components
                - "service": Tests interaction with external services
                - "system": Tests end-to-end system integration
-               
+
     Returns:
-        Decorator function that marks tests as integration tests
-        
+        Decorator function
+
     Example:
         @integration_test(scope="service")
         def test_api_integration(self):
@@ -62,14 +62,14 @@ def integration_test(scope: str = "component") -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
-        
+
         # Add wobble metadata
         wrapper._wobble_integration = True
         wrapper._wobble_category = 'integration'
         wrapper._wobble_scope = scope
-        
+
         return wrapper
-    
+
     return decorator
 
 
