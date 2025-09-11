@@ -15,7 +15,7 @@ from .output import OutputFormatter
 
 class WobbleTestResult(unittest.TestResult):
     """Enhanced test result class with timing and metadata tracking."""
-    
+
     def __init__(self, output_formatter: OutputFormatter):
         super().__init__()
         self.output_formatter = output_formatter
@@ -23,47 +23,73 @@ class WobbleTestResult(unittest.TestResult):
         self.test_metadata = {}
         self.start_time = None
         self.current_test = None
-        
+        self._test_execution_count = {}  # Track execution count per test
+
     def startTest(self, test):
         """Called when a test starts."""
         super().startTest(test)
         self.current_test = test
         self.start_time = time.time()
-        
-        # Extract test metadata
-        test_method = getattr(test, test._testMethodName, None)
-        if test_method:
-            from .decorators import get_test_metadata
-            self.test_metadata[test] = get_test_metadata(test_method)
-        
+
+        # Track execution count for this test
+        test_id = self._get_test_id(test)
+        self._test_execution_count[test_id] = self._test_execution_count.get(test_id, 0) + 1
+
+        # Extract test metadata (only on first execution)
+        if self._test_execution_count[test_id] == 1:
+            test_method = getattr(test, test._testMethodName, None)
+            if test_method:
+                from .decorators import get_test_metadata
+                self.test_metadata[test] = get_test_metadata(test_method)
+
         # Print test start if verbose
         self.output_formatter.print_test_start(test)
-    
+
     def stopTest(self, test):
         """Called when a test ends."""
         super().stopTest(test)
-        
+
         if self.start_time:
             duration = time.time() - self.start_time
+            test_id = self._get_test_id(test)
+
+            # Store timing with execution count to avoid overwrites
+            timing_key = f"{test_id}_exec_{self._test_execution_count[test_id]}"
+            self.test_timings[timing_key] = duration
+
+            # Also store the most recent timing for the test object (for compatibility)
             self.test_timings[test] = duration
-        
+
         self.current_test = None
         self.start_time = None
+
+    def _get_test_id(self, test):
+        """Generate a unique identifier for a test."""
+        return f"{test.__class__.__module__}.{test.__class__.__name__}.{test._testMethodName}"
+
+    def _calculate_current_test_duration(self):
+        """Calculate the duration of the currently running test."""
+        if self.start_time:
+            return time.time() - self.start_time
+        return 0.0
     
     def addSuccess(self, test):
         """Called when a test passes."""
         super().addSuccess(test)
-        self.output_formatter.print_test_success(test, self.test_timings.get(test, 0))
-    
+        duration = self._calculate_current_test_duration()
+        self.output_formatter.print_test_success(test, duration)
+
     def addError(self, test, err):
         """Called when a test has an error."""
         super().addError(test, err)
-        self.output_formatter.print_test_error(test, err, self.test_timings.get(test, 0))
-    
+        duration = self._calculate_current_test_duration()
+        self.output_formatter.print_test_error(test, err, duration)
+
     def addFailure(self, test, err):
         """Called when a test fails."""
         super().addFailure(test, err)
-        self.output_formatter.print_test_failure(test, err, self.test_timings.get(test, 0))
+        duration = self._calculate_current_test_duration()
+        self.output_formatter.print_test_failure(test, err, duration)
     
     def addSkip(self, test, reason):
         """Called when a test is skipped."""
