@@ -12,7 +12,10 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 from io import StringIO
 
-from wobble.cli import create_parser, detect_repository_root, main
+from wobble.cli import (
+    create_parser, detect_repository_root, main,
+    process_file_output_args, reconstruct_command
+)
 
 
 class TestCLIArgumentParsing(unittest.TestCase):
@@ -266,6 +269,123 @@ class TestSimple(unittest.TestCase):
         mock_discovery.assert_called_once()
         mock_runner.assert_called_once()
         mock_output.assert_called_once()
+
+
+class TestFileOutputArguments(unittest.TestCase):
+    """Test file output argument parsing and processing."""
+
+    def setUp(self):
+        """Set up test environment."""
+        self.parser = create_parser()
+
+    def test_log_file_auto_timestamp(self):
+        """Test --log-file without filename generates timestamped file."""
+        args = self.parser.parse_args(['--log-file'])
+
+        self.assertEqual(args.log_file, '')  # Empty string when no filename provided
+
+        # Test file config processing
+        with patch('wobble.cli.datetime') as mock_datetime:
+            mock_datetime.now.return_value.strftime.return_value = '20240115_143025'
+
+            configs = process_file_output_args(args)
+
+            self.assertEqual(len(configs), 1)
+            config = configs[0]
+            self.assertEqual(config['filename'], 'wobble_results_20240115_143025.txt')
+            self.assertEqual(config['format'], 'txt')
+            self.assertEqual(config['verbosity'], 1)
+            self.assertFalse(config['append'])
+
+    def test_log_file_explicit_filename(self):
+        """Test --log-file with explicit filename."""
+        args = self.parser.parse_args(['--log-file', 'custom_results.json'])
+
+        self.assertEqual(args.log_file, 'custom_results.json')
+
+        configs = process_file_output_args(args)
+
+        self.assertEqual(len(configs), 1)
+        config = configs[0]
+        self.assertEqual(config['filename'], 'custom_results.json')
+        self.assertEqual(config['format'], 'json')  # Auto-detected from extension
+
+    def test_log_file_format_options(self):
+        """Test --log-file-format argument."""
+        # Test explicit JSON format
+        args = self.parser.parse_args(['--log-file', 'results.txt', '--log-file-format', 'json'])
+        configs = process_file_output_args(args)
+        self.assertEqual(configs[0]['format'], 'json')
+
+        # Test explicit TXT format
+        args = self.parser.parse_args(['--log-file', 'results.json', '--log-file-format', 'txt'])
+        configs = process_file_output_args(args)
+        self.assertEqual(configs[0]['format'], 'txt')
+
+        # Test auto-detection (default)
+        args = self.parser.parse_args(['--log-file', 'results.json'])
+        configs = process_file_output_args(args)
+        self.assertEqual(configs[0]['format'], 'json')
+
+    def test_log_verbosity_levels(self):
+        """Test --log-verbosity argument."""
+        for level in [1, 2, 3]:
+            args = self.parser.parse_args(['--log-file', 'test.txt', '--log-verbosity', str(level)])
+            configs = process_file_output_args(args)
+            self.assertEqual(configs[0]['verbosity'], level)
+
+    def test_log_append_overwrite_behavior(self):
+        """Test --log-append and --log-overwrite flags."""
+        # Test append mode
+        args = self.parser.parse_args(['--log-file', 'test.txt', '--log-append'])
+        configs = process_file_output_args(args)
+        self.assertTrue(configs[0]['append'])
+
+        # Test overwrite mode (explicit)
+        args = self.parser.parse_args(['--log-file', 'test.txt', '--log-overwrite'])
+        configs = process_file_output_args(args)
+        self.assertFalse(configs[0]['append'])
+
+        # Test default behavior (overwrite)
+        args = self.parser.parse_args(['--log-file', 'test.txt'])
+        configs = process_file_output_args(args)
+        self.assertFalse(configs[0]['append'])
+
+    def test_no_file_output(self):
+        """Test when no file output is specified."""
+        args = self.parser.parse_args([])
+        configs = process_file_output_args(args)
+        self.assertEqual(len(configs), 0)
+
+    def test_command_reconstruction(self):
+        """Test command line reconstruction for logging."""
+        # Test basic command
+        args = self.parser.parse_args(['--category', 'regression'])
+        command = reconstruct_command(args)
+        self.assertIn('wobble', command)
+        self.assertIn('--category regression', command)
+
+        # Test file output command
+        args = self.parser.parse_args(['--log-file', 'results.json', '--log-verbosity', '2'])
+        command = reconstruct_command(args)
+        self.assertIn('--log-file results.json', command)
+        self.assertIn('--log-verbosity 2', command)
+
+        # Test auto-timestamped file
+        args = self.parser.parse_args(['--log-file'])
+        command = reconstruct_command(args)
+        self.assertIn('--log-file', command)
+        self.assertNotIn('--log-file ', command)  # Should not have space after flag
+
+    def test_file_output_argument_validation(self):
+        """Test file output argument validation."""
+        # Test invalid verbosity level
+        with self.assertRaises(SystemExit):
+            self.parser.parse_args(['--log-verbosity', '4'])
+
+        # Test invalid format
+        with self.assertRaises(SystemExit):
+            self.parser.parse_args(['--log-file-format', 'xml'])
 
 
 if __name__ == '__main__':

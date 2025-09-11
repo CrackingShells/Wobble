@@ -8,7 +8,8 @@ import argparse
 import sys
 import os
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
+from datetime import datetime
 
 from .discovery import TestDiscoveryEngine
 from .runner import TestRunner
@@ -109,7 +110,44 @@ Examples:
         action='store_true',
         help='Suppress all output except errors'
     )
-    
+
+    # File output options
+    file_group = parser.add_argument_group('File Output Options')
+
+    file_group.add_argument(
+        '--log-file',
+        nargs='?',
+        const='',  # Empty string when flag used without argument
+        help='Enable file output with optional filename (auto-timestamped if not specified)'
+    )
+
+    file_group.add_argument(
+        '--log-file-format',
+        choices=['txt', 'json', 'auto'],
+        default='auto',
+        help='File output format (default: auto-detect from extension)'
+    )
+
+    file_group.add_argument(
+        '--log-verbosity',
+        type=int,
+        choices=[1, 2, 3],
+        default=1,
+        help='File output verbosity level (1=Standard, 2=Detailed, 3=Complete)'
+    )
+
+    file_group.add_argument(
+        '--log-append',
+        action='store_true',
+        help='Append to existing file instead of overwriting'
+    )
+
+    file_group.add_argument(
+        '--log-overwrite',
+        action='store_true',
+        help='Force overwrite existing file (default behavior)'
+    )
+
     return parser
 
 
@@ -143,6 +181,119 @@ def detect_repository_root(start_path: str = ".") -> Optional[Path]:
     return None
 
 
+def process_file_output_args(args: argparse.Namespace) -> List[Dict[str, Any]]:
+    """Process file output arguments into configuration objects.
+
+    Args:
+        args: Parsed command line arguments
+
+    Returns:
+        List of file output configuration dictionaries
+    """
+    file_configs = []
+
+    if hasattr(args, 'log_file') and args.log_file is not None:
+        # Generate filename if not provided
+        if args.log_file == '':
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            extension = "json" if args.log_file_format == "json" else "txt"
+            filename = f"wobble_results_{timestamp}.{extension}"
+        else:
+            filename = args.log_file
+
+        # Auto-detect format from extension
+        format_type = args.log_file_format
+        if format_type == 'auto':
+            extension = Path(filename).suffix.lower()
+            format_type = 'json' if extension == '.json' else 'txt'
+
+        # Handle append/overwrite logic
+        append_mode = False
+        if hasattr(args, 'log_append') and args.log_append:
+            append_mode = True
+        elif hasattr(args, 'log_overwrite') and args.log_overwrite:
+            append_mode = False
+        # Default is overwrite (append_mode = False)
+
+        config = {
+            'filename': filename,
+            'format': format_type,
+            'verbosity': getattr(args, 'log_verbosity', 1),
+            'append': append_mode
+        }
+
+        file_configs.append(config)
+
+    return file_configs
+
+
+def reconstruct_command(args: argparse.Namespace) -> str:
+    """Reconstruct the exact command line for logging purposes.
+
+    Args:
+        args: Parsed command line arguments
+
+    Returns:
+        Reconstructed command line string
+    """
+    command_parts = ['wobble']
+
+    # Add path if not default
+    if args.path != '.':
+        command_parts.extend(['--path', args.path])
+
+    # Add category if not default
+    if args.category != 'all':
+        command_parts.extend(['--category', args.category])
+
+    # Add format if not default
+    if args.format != 'standard':
+        command_parts.extend(['--format', args.format])
+
+    # Add pattern if not default
+    if args.pattern != 'test*.py':
+        command_parts.extend(['--pattern', args.pattern])
+
+    # Add boolean flags
+    if args.exclude_slow:
+        command_parts.append('--exclude-slow')
+    if args.exclude_ci:
+        command_parts.append('--exclude-ci')
+    if args.no_color:
+        command_parts.append('--no-color')
+    if args.discover_only:
+        command_parts.append('--discover-only')
+    if args.list_categories:
+        command_parts.append('--list-categories')
+    if args.quiet:
+        command_parts.append('--quiet')
+
+    # Add verbosity
+    if args.verbose > 0:
+        command_parts.extend(['-v'] * args.verbose)
+
+    # Add file output arguments
+    if hasattr(args, 'log_file') and args.log_file is not None:
+        if args.log_file == '':
+            command_parts.append('--log-file')
+        else:
+            command_parts.extend(['--log-file', args.log_file])
+
+        if hasattr(args, 'log_file_format') and args.log_file_format != 'auto':
+            command_parts.extend(['--log-file-format', args.log_file_format])
+
+        if hasattr(args, 'log_verbosity') and args.log_verbosity != 1:
+            command_parts.extend(['--log-verbosity', str(args.log_verbosity)])
+
+        if hasattr(args, 'log_append') and args.log_append:
+            command_parts.append('--log-append')
+
+        if hasattr(args, 'log_overwrite') and args.log_overwrite:
+            command_parts.append('--log-overwrite')
+
+    return ' '.join(command_parts)
+
+
 def main() -> int:
     """Main entry point for wobble CLI.
     
@@ -163,13 +314,17 @@ def main() -> int:
         print(f"Error: Path '{args.path}' does not exist", file=sys.stderr)
         return 1
     
+    # Process file output configuration
+    file_configs = process_file_output_args(args)
+
     # Initialize components
     discovery_engine = TestDiscoveryEngine(args.path)
     output_formatter = OutputFormatter(
         format_type=args.format,
         use_color=not args.no_color,
         verbosity=args.verbose,
-        quiet=args.quiet
+        quiet=args.quiet,
+        file_outputs=file_configs
     )
     
     try:
