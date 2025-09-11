@@ -1,0 +1,356 @@
+"""Concurrent file I/O system for wobble test results.
+
+This module provides threaded file writing capabilities with ordered
+processing to support high-performance file output without blocking
+test execution.
+"""
+
+import threading
+import queue
+import time
+import json
+import os
+from dataclasses import dataclass
+from typing import Optional, Dict, Any, List
+from pathlib import Path
+
+from .data_structures import TestResult, TestRunSummary, serialize_test_results, format_test_results_text
+
+
+@dataclass
+class WriteOperation:
+    """Represents a file write operation with ordering information.
+    
+    Attributes:
+        sequence_id: Unique sequence identifier for ordering
+        operation_type: Type of operation ('test_result', 'summary', 'header')
+        data: The data to write
+        timestamp: When the operation was created
+    """
+    sequence_id: int
+    operation_type: str
+    data: Any
+    timestamp: float
+
+
+class ThreadedFileWriter:
+    """Threaded file writer with ordered processing.
+    
+    This class provides background file writing with guaranteed ordering
+    of write operations, supporting concurrent test execution while
+    maintaining result sequence integrity.
+    """
+    
+    def __init__(self, file_path: str, format_type: str, verbosity: int = 1, 
+                 buffer_size: int = 1000, append_mode: bool = False):
+        """Initialize the threaded file writer.
+        
+        Args:
+            file_path: Path to the output file
+            format_type: Output format ('json' or 'txt')
+            verbosity: Output verbosity level (1-3)
+            buffer_size: Maximum number of operations to buffer
+            append_mode: Whether to append to existing file
+        """
+        self.file_path = Path(file_path)
+        self.format_type = format_type.lower()
+        self.verbosity = verbosity
+        self.buffer_size = buffer_size
+        self.append_mode = append_mode
+        
+        # Threading components
+        self.write_queue = queue.Queue(maxsize=buffer_size)
+        self.writer_thread: Optional[threading.Thread] = None
+        self.shutdown_event = threading.Event()
+        self.error_event = threading.Event()
+        self.last_error: Optional[Exception] = None
+        
+        # Ordering components
+        self.next_sequence_id = 0
+        self.pending_writes: Dict[int, WriteOperation] = {}
+        self.next_write_sequence = 0
+        self.sequence_lock = threading.Lock()
+        
+        # File handling
+        self.file_handle: Optional[Any] = None
+        self.test_results: List[TestResult] = []
+        self.run_summary: Optional[TestRunSummary] = None
+        
+        # Performance tracking
+        self.operations_written = 0
+        self.start_time = time.time()
+        
+        self._start_writer_thread()
+    
+    def _start_writer_thread(self) -> None:
+        """Start the background writer thread."""
+        try:
+            # Create directory if it doesn't exist
+            self.file_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Open file in appropriate mode
+            mode = 'a' if self.append_mode else 'w'
+            self.file_handle = open(self.file_path, mode, encoding='utf-8')
+            
+            # Start writer thread
+            self.writer_thread = threading.Thread(
+                target=self._writer_loop, 
+                name=f"FileWriter-{self.file_path.name}",
+                daemon=True
+            )
+            self.writer_thread.start()
+            
+        except Exception as e:
+            self.last_error = e
+            self.error_event.set()
+            raise
+    
+    def _writer_loop(self) -> None:
+        """Main writer thread loop."""
+        try:
+            while not self.shutdown_event.is_set():
+                try:
+                    # Get operation from queue with timeout
+                    operation = self.write_queue.get(timeout=0.1)
+                    
+                    # Store operation for ordered processing
+                    self.pending_writes[operation.sequence_id] = operation
+                    
+                    # Process any operations that are ready
+                    self._process_pending_writes()
+                    
+                    # Mark task as done
+                    self.write_queue.task_done()
+                    
+                except queue.Empty:
+                    # Timeout is normal, continue loop
+                    continue
+                    
+        except Exception as e:
+            self.last_error = e
+            self.error_event.set()
+    
+    def _process_pending_writes(self) -> None:
+        """Process pending writes in sequence order."""
+        while self.next_write_sequence in self.pending_writes:
+            operation = self.pending_writes.pop(self.next_write_sequence)
+            self._write_operation(operation)
+            self.next_write_sequence += 1
+            self.operations_written += 1
+            
+            # Flush periodically for performance
+            if self.operations_written % 10 == 0:
+                self.file_handle.flush()
+    
+    def _write_operation(self, operation: WriteOperation) -> None:
+        """Write a single operation to the file.
+        
+        Args:
+            operation: The write operation to execute
+        """
+        if operation.operation_type == 'test_result':
+            self.test_results.append(operation.data)
+            
+        elif operation.operation_type == 'summary':
+            self.run_summary = operation.data
+            self._write_final_output()
+            
+        elif operation.operation_type == 'header':
+            self._write_header(operation.data)
+    
+    def _write_header(self, header_data: Dict[str, Any]) -> None:
+        """Write file header information.
+        
+        Args:
+            header_data: Header information to write
+        """
+        if self.format_type == 'json':
+            # For JSON, we'll write everything at the end
+            pass
+        else:
+            # For text format, write header immediately
+            self.file_handle.write("=== Wobble Test Run ===\n")
+            self.file_handle.write(f"Command: {header_data.get('command', 'unknown')}\n")
+            self.file_handle.write(f"Started: {header_data.get('start_time', 'unknown')}\n")
+            self.file_handle.write("\n")
+    
+    def _write_final_output(self) -> None:
+        """Write the final output with all collected results."""
+        if not self.run_summary:
+            return
+            
+        if self.format_type == 'json':
+            # Write complete JSON output
+            json_output = serialize_test_results(
+                self.test_results, 
+                self.run_summary, 
+                self.verbosity
+            )
+            self.file_handle.write(json_output)
+            self.file_handle.write('\n')
+            
+        else:
+            # Write text format summary
+            text_output = format_test_results_text(
+                self.test_results,
+                self.run_summary,
+                self.verbosity
+            )
+            # Only write summary part since individual results were written already
+            summary_lines = text_output.split('\n')
+            summary_start = next(i for i, line in enumerate(summary_lines) if line.startswith('=== Summary ==='))
+            summary_text = '\n'.join(summary_lines[summary_start:])
+            self.file_handle.write(summary_text)
+            self.file_handle.write('\n')
+    
+    def write_header(self, command: str, start_time: str) -> None:
+        """Queue header information for writing.
+        
+        Args:
+            command: The command that started the test run
+            start_time: When the test run started
+        """
+        self._queue_operation('header', {
+            'command': command,
+            'start_time': start_time
+        })
+    
+    def write_test_result(self, test_result: TestResult) -> None:
+        """Queue a test result for writing.
+        
+        Args:
+            test_result: The test result to write
+            
+        Raises:
+            RuntimeError: If the writer has encountered an error
+        """
+        if self.error_event.is_set():
+            raise RuntimeError(f"File writer error: {self.last_error}")
+        
+        self._queue_operation('test_result', test_result)
+        
+        # For text format, write individual results immediately
+        if self.format_type == 'txt':
+            self._write_text_result(test_result)
+    
+    def _write_text_result(self, test_result: TestResult) -> None:
+        """Write individual test result in text format.
+        
+        Args:
+            test_result: The test result to write
+        """
+        status_symbol = {
+            'PASS': '✓',
+            'FAIL': '✗',
+            'ERROR': 'E',
+            'SKIP': 'S'
+        }.get(test_result.status.value, '?')
+        
+        line = f"{status_symbol} {test_result.classname}.{test_result.name} ({test_result.duration:.3f}s)\n"
+        
+        # Write directly to file for immediate feedback
+        if self.file_handle:
+            self.file_handle.write(line)
+            
+            # Add error details for higher verbosity
+            if self.verbosity >= 2 and test_result.error_info:
+                self.file_handle.write(f"    Error: {test_result.error_info.type}: {test_result.error_info.message}\n")
+                
+                if self.verbosity >= 3:
+                    # Add traceback for complete verbosity
+                    traceback_lines = test_result.error_info.traceback.split('\n')
+                    for tb_line in traceback_lines[:5]:  # Limit to first 5 lines
+                        if tb_line.strip():
+                            self.file_handle.write(f"    {tb_line}\n")
+                    if len(traceback_lines) > 5:
+                        self.file_handle.write("    ... (traceback truncated)\n")
+            
+            self.file_handle.flush()
+    
+    def write_summary(self, summary: TestRunSummary) -> None:
+        """Queue test run summary for writing.
+        
+        Args:
+            summary: The test run summary to write
+        """
+        self._queue_operation('summary', summary)
+    
+    def _queue_operation(self, operation_type: str, data: Any) -> None:
+        """Queue an operation for writing.
+        
+        Args:
+            operation_type: Type of operation
+            data: Data to write
+            
+        Raises:
+            RuntimeError: If the writer has encountered an error
+            queue.Full: If the write queue is full
+        """
+        if self.error_event.is_set():
+            raise RuntimeError(f"File writer error: {self.last_error}")
+        
+        with self.sequence_lock:
+            operation = WriteOperation(
+                sequence_id=self.next_sequence_id,
+                operation_type=operation_type,
+                data=data,
+                timestamp=time.time()
+            )
+            self.next_sequence_id += 1
+        
+        try:
+            # Use timeout to avoid blocking indefinitely
+            self.write_queue.put(operation, timeout=1.0)
+        except queue.Full:
+            raise RuntimeError("File writer queue is full - cannot accept more operations")
+    
+    def close(self) -> None:
+        """Close the file writer and clean up resources."""
+        # Signal shutdown
+        self.shutdown_event.set()
+        
+        # Wait for queue to empty
+        if self.write_queue:
+            try:
+                self.write_queue.join()
+            except:
+                pass  # Ignore errors during shutdown
+        
+        # Wait for writer thread to finish
+        if self.writer_thread and self.writer_thread.is_alive():
+            self.writer_thread.join(timeout=5.0)
+        
+        # Close file handle
+        if self.file_handle:
+            try:
+                self.file_handle.flush()
+                self.file_handle.close()
+            except:
+                pass  # Ignore errors during shutdown
+    
+    def get_performance_stats(self) -> Dict[str, Any]:
+        """Get performance statistics for the writer.
+        
+        Returns:
+            Dictionary containing performance metrics
+        """
+        elapsed_time = time.time() - self.start_time
+        ops_per_second = self.operations_written / elapsed_time if elapsed_time > 0 else 0
+        
+        return {
+            'operations_written': self.operations_written,
+            'elapsed_time': elapsed_time,
+            'operations_per_second': ops_per_second,
+            'queue_size': self.write_queue.qsize(),
+            'pending_writes': len(self.pending_writes),
+            'has_error': self.error_event.is_set(),
+            'last_error': str(self.last_error) if self.last_error else None
+        }
+    
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        self.close()
