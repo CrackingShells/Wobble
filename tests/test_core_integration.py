@@ -285,7 +285,10 @@ class TestTestRunnerIntegration(unittest.TestCase):
         
         # Verify file output was created
         self.assertTrue(self.test_file.exists())
-        
+
+        # Close formatter to finalize file output
+        self.enhanced_formatter.close()
+
         # Verify JSON content
         content = self.test_file.read_text()
         data = json.loads(content)

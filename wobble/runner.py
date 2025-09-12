@@ -41,14 +41,24 @@ class WobbleTestResult(unittest.TestResult):
 
         # Extract test metadata (only on first execution)
         if self._test_execution_count[test_id] == 1:
+            metadata = {}
+
+            # First, check for instance-level metadata (for mock tests)
+            if hasattr(test, '_wobble_metadata'):
+                metadata.update(test._wobble_metadata)
+
+            # Then, check for method-level metadata (from decorators)
             test_method = getattr(test, test._testMethodName, None)
             if test_method:
                 try:
                     from .decorators import get_test_metadata
-                    self.test_metadata[test] = get_test_metadata(test_method)
+                    method_metadata = get_test_metadata(test_method)
+                    metadata.update(method_metadata)
                 except ImportError:
                     # Decorators module may not exist yet
-                    self.test_metadata[test] = {}
+                    pass
+
+            self.test_metadata[test] = metadata
 
         # Notify output formatter of test start
         if self.enhanced_mode:
@@ -232,8 +242,14 @@ class TestRunner:
         if self.enhanced_mode:
             # Try to reconstruct the command from CLI args
             try:
+                import sys
+                # Parse current command line arguments
+                from .cli import create_parser
+                parser = create_parser()
+                args = parser.parse_args(sys.argv[1:])
+
                 from .cli import reconstruct_command
-                command = reconstruct_command()
+                command = reconstruct_command(args)
             except:
                 command = "wobble"  # Fallback
             self.output_formatter.start_test_run(command, len(test_infos))
