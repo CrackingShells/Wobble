@@ -214,4 +214,4 @@ yarn-debug.log*
 yarn-error.log*
 
 # Semantic-release
-.semantic-release/
+.semantic-release/final_test.json
