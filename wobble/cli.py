@@ -91,10 +91,17 @@ Examples:
     
     # Repository options
     parser.add_argument(
-        '--path',
-        type=str,
+        'path',
+        nargs='?',
         default='.',
         help='Path to repository root (default: current directory)'
+    )
+
+    parser.add_argument(
+        '--path',
+        type=str,
+        dest='path_option',
+        help='Alternative way to specify path to repository root'
     )
     
     # Verbosity options
@@ -239,8 +246,11 @@ def reconstruct_command(args: argparse.Namespace) -> str:
     command_parts = ['wobble']
 
     # Add path if not default
-    if args.path != '.':
-        command_parts.extend(['--path', args.path])
+    # Use --path format if it was specified via --path option, otherwise use positional
+    if hasattr(args, 'path_option') and args.path_option:
+        command_parts.extend(['--path', args.path_option])
+    elif args.path not in ['.', 'tests/', 'tests']:
+        command_parts.append(args.path)
 
     # Add category if not default
     if args.category != 'all':
@@ -302,7 +312,11 @@ def main() -> int:
     """
     parser = create_parser()
     args = parser.parse_args()
-    
+
+    # Resolve path from positional or optional argument
+    if hasattr(args, 'path_option') and args.path_option:
+        args.path = args.path_option
+
     # Detect repository root if not explicitly provided
     if args.path == '.':
         repo_root = detect_repository_root()
