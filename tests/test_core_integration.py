@@ -22,15 +22,16 @@ from wobble.output import OutputFormatter
 from wobble.data_structures import TestResult, TestStatus, ErrorInfo
 
 
-class MockTestCase(unittest.TestCase):
+class MockTestForIntegration(unittest.TestCase):
     """Mock test case for testing."""
-    
+
     def __init__(self, class_name: str, method_name: str, metadata: dict = None):
-        super().__init__()
+        # Initialize as a proper TestCase
+        super().__init__(methodName='runTest')
         self.__class__.__name__ = class_name
         self._testMethodName = method_name
         self._wobble_metadata = metadata or {}
-    
+
     def runTest(self):
         """Default test method."""
         pass
@@ -86,7 +87,7 @@ class TestWobbleTestResultIntegration(unittest.TestCase):
     def test_test_success_integration(self):
         """Test successful test integration with enhanced output."""
         result = WobbleTestResult(self.enhanced_formatter)
-        test_case = MockTestCase("TestClass", "test_success")
+        test_case = MockTestForIntegration("TestClass", "test_success")
         
         # Simulate test execution
         result.startTest(test_case)
@@ -106,7 +107,7 @@ class TestWobbleTestResultIntegration(unittest.TestCase):
     def test_test_failure_integration(self):
         """Test failed test integration with enhanced output."""
         result = WobbleTestResult(self.enhanced_formatter)
-        test_case = MockTestCase("TestClass", "test_failure")
+        test_case = MockTestForIntegration("TestClass", "test_failure")
         
         # Create error info
         try:
@@ -133,7 +134,7 @@ class TestWobbleTestResultIntegration(unittest.TestCase):
     def test_test_error_integration(self):
         """Test test error integration with enhanced output."""
         result = WobbleTestResult(self.enhanced_formatter)
-        test_case = MockTestCase("TestClass", "test_error")
+        test_case = MockTestForIntegration("TestClass", "test_error")
         
         # Create error info
         try:
@@ -160,7 +161,7 @@ class TestWobbleTestResultIntegration(unittest.TestCase):
     def test_test_skip_integration(self):
         """Test skipped test integration with enhanced output."""
         result = WobbleTestResult(self.enhanced_formatter)
-        test_case = MockTestCase("TestClass", "test_skip")
+        test_case = MockTestForIntegration("TestClass", "test_skip")
         
         # Simulate test execution
         result.startTest(test_case)
@@ -177,8 +178,8 @@ class TestWobbleTestResultIntegration(unittest.TestCase):
     def test_metadata_extraction(self):
         """Test metadata extraction from test cases."""
         result = WobbleTestResult(self.enhanced_formatter)
-        test_case = MockTestCase(
-            "TestClass", 
+        test_case = MockTestForIntegration(
+            "TestClass",
             "test_with_metadata",
             metadata={'category': 'integration', 'priority': 'high'}
         )
@@ -239,8 +240,8 @@ class TestTestRunnerIntegration(unittest.TestCase):
         
         # Create test infos
         test_infos = [
-            {'test_case': MockTestCase("TestClass", "test_pass")},
-            {'test_case': MockTestCase("TestClass", "test_fail")}
+            {'test_case': MockTestForIntegration("TestClass", "test_pass")},
+            {'test_case': MockTestForIntegration("TestClass", "test_fail")}
         ]
         
         # Mock the test execution to control results
@@ -294,7 +295,7 @@ class TestTestRunnerIntegration(unittest.TestCase):
         
         # Mock sys.argv to simulate command line
         with patch('sys.argv', ['wobble', 'tests/', '--verbose', '2']):
-            test_infos = [{'test_case': MockTestCase("TestClass", "test_example")}]
+            test_infos = [{'test_case': MockTestForIntegration("TestClass", "test_example")}]
             
             with patch.object(unittest.TestSuite, 'run') as mock_run:
                 def mock_test_run(result):
@@ -347,7 +348,7 @@ class TestCLIIntegration(unittest.TestCase):
         # Mock discovery and runner
         mock_discovery = MagicMock()
         mock_discovery.discover_tests.return_value = {'test': []}
-        mock_discovery.filter_tests.return_value = [{'test_case': MockTestCase("Test", "test")}]
+        mock_discovery.filter_tests.return_value = [{'test_case': MockTestForIntegration("Test", "test")}]
         mock_discovery_class.return_value = mock_discovery
         
         mock_runner = MagicMock()

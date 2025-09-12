@@ -193,7 +193,9 @@ class TestConsoleOutputObserver(unittest.TestCase):
         self.assertEqual(observer.strategy, self.strategy)
         self.assertTrue(observer.use_color)
         self.assertFalse(observer.quiet)
-        self.assertIsInstance(observer.lock, threading.Lock)
+        # Check that lock is a lock object (type varies by Python version)
+        self.assertTrue(hasattr(observer.lock, 'acquire'))
+        self.assertTrue(hasattr(observer.lock, 'release'))
     
     @patch('builtins.print')
     def test_console_observer_test_event(self, mock_print):
@@ -314,7 +316,7 @@ class TestFileOutputObserver(unittest.TestCase):
         observer.close()
         
         # Verify file content
-        content = self.test_file.read_text()
+        content = self.test_file.read_text(encoding='utf-8')
         self.assertIn("test_example", content)
         self.assertIn("✓", content)
     
@@ -363,7 +365,9 @@ class TestOutputEventPublisher(unittest.TestCase):
         """Test OutputEventPublisher initialization."""
         self.assertEqual(len(self.publisher.observers), 0)
         self.assertEqual(self.publisher.event_count, 0)
-        self.assertIsInstance(self.publisher.lock, threading.Lock)
+        # Check that lock is a lock object (type varies by Python version)
+        self.assertTrue(hasattr(self.publisher.lock, 'acquire'))
+        self.assertTrue(hasattr(self.publisher.lock, 'release'))
     
     def test_add_remove_observers(self):
         """Test adding and removing observers."""
