@@ -272,10 +272,10 @@ def format_test_results_text(results: List[TestResult],
     # Test results
     for result in results:
         status_symbol = {
-            TestStatus.PASS: "✓",
-            TestStatus.FAIL: "✗",
-            TestStatus.ERROR: "E",
-            TestStatus.SKIP: "S"
+            TestStatus.PASS: "PASS",
+            TestStatus.FAIL: "FAIL",
+            TestStatus.ERROR: "ERROR",
+            TestStatus.SKIP: "SKIP"
         }.get(result.status, "?")
         
         lines.append(f"{status_symbol} {result.classname}.{result.name} ({result.duration:.3f}s)")

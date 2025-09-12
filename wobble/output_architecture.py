@@ -84,10 +84,10 @@ class StandardOutputStrategy(OutputStrategy):
     def format_test_result(self, test_result: TestResult, verbosity: int = 1) -> str:
         """Format test result in standard text format."""
         status_symbol = {
-            'PASS': 'PASS',
-            'FAIL': 'FAIL',
-            'ERROR': 'ERROR',
-            'SKIP': 'SKIP'
+            'PASS': '✓',
+            'FAIL': '✗',
+            'ERROR': '💥',
+            'SKIP': '⊝'
         }.get(test_result.status.value, '?')
         
         result = f"{status_symbol} {test_result.classname}.{test_result.name}"

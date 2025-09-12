@@ -46,14 +46,27 @@ class OutputFormatter:
         self.verbosity = verbosity
         self.quiet = quiet
         
-        # Status icons - use safe ASCII characters to avoid encoding issues
-        self.icons = {
-            'pass': 'PASS',
-            'fail': 'FAIL',
-            'error': 'ERROR',
-            'skip': 'SKIP',
-            'info': 'INFO'
-        }
+        # Status icons - use Unicode symbols with ASCII fallback for encoding issues
+        try:
+            # Test if Unicode symbols can be encoded
+            test_symbols = '✓✗💥⊝ℹ'
+            test_symbols.encode(sys.stdout.encoding or 'utf-8')
+            self.icons = {
+                'pass': '✓',
+                'fail': '✗',
+                'error': '💥',
+                'skip': '⊝',
+                'info': 'ℹ'
+            }
+        except (UnicodeEncodeError, LookupError):
+            # Fallback to ASCII if Unicode symbols can't be encoded
+            self.icons = {
+                'pass': 'PASS',
+                'fail': 'FAIL',
+                'error': 'ERROR',
+                'skip': 'SKIP',
+                'info': 'INFO'
+            }
         
         # Colors
         self.colors = {
