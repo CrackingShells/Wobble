@@ -67,13 +67,25 @@ class OutputStrategy(ABC):
     @abstractmethod
     def format_header(self, command: str, start_time: datetime) -> str:
         """Format a header for the output.
-        
+
         Args:
             command: The command that started the test run
             start_time: When the test run started
-            
+
         Returns:
             Formatted header string
+        """
+        pass
+
+    @abstractmethod
+    def format_discovery_results(self, discovery_metadata: Dict[str, Any]) -> str:
+        """Format discovery results for output.
+
+        Args:
+            discovery_metadata: Discovery results metadata
+
+        Returns:
+            Formatted discovery results string
         """
         pass
 
@@ -117,6 +129,21 @@ class StandardOutputStrategy(OutputStrategy):
     def format_header(self, command: str, start_time: datetime) -> str:
         """Format header in standard text format."""
         return f"Running: {command}\nStarted: {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+
+    def format_discovery_results(self, discovery_metadata: Dict[str, Any]) -> str:
+        """Format discovery results in standard text format."""
+        lines = [
+            "=== Test Discovery Results ===",
+            f"Total tests: {discovery_metadata.get('total_tests', 0)}",
+            f"Categories: {discovery_metadata.get('categories', 0)}",
+            ""
+        ]
+
+        discovered_tests = discovery_metadata.get('discovered_tests', {})
+        for category, tests in discovered_tests.items():
+            lines.append(f"{category}: {len(tests)} test(s)")
+
+        return '\n'.join(lines)
 
 
 class VerboseOutputStrategy(OutputStrategy):
@@ -176,6 +203,31 @@ class VerboseOutputStrategy(OutputStrategy):
         ]
         return '\n'.join(lines)
 
+    def format_discovery_results(self, discovery_metadata: Dict[str, Any]) -> str:
+        """Format discovery results in verbose text format."""
+        lines = [
+            "=" * 60,
+            "WOBBLE TEST DISCOVERY RESULTS",
+            "=" * 60,
+            f"Timestamp: {discovery_metadata.get('timestamp', datetime.now()).strftime('%Y-%m-%d %H:%M:%S')}",
+            f"Total tests discovered: {discovery_metadata.get('total_tests', 0)}",
+            f"Test categories found: {discovery_metadata.get('categories', 0)}",
+            "=" * 60,
+            ""
+        ]
+
+        discovered_tests = discovery_metadata.get('discovered_tests', {})
+        for category, tests in discovered_tests.items():
+            lines.append(f"Category: {category} ({len(tests)} tests)")
+            lines.append("-" * 40)
+            for test in tests:
+                test_name = test.get('name', 'unknown')
+                test_class = test.get('class', 'unknown')
+                lines.append(f"  • {test_class}.{test_name}")
+            lines.append("")
+
+        return '\n'.join(lines)
+
 
 class JSONOutputStrategy(OutputStrategy):
     """JSON output formatting strategy."""
@@ -201,6 +253,19 @@ class JSONOutputStrategy(OutputStrategy):
             }
         }
         return json.dumps(header_data, indent=2)
+
+    def format_discovery_results(self, discovery_metadata: Dict[str, Any]) -> str:
+        """Format discovery results in JSON format."""
+        import json
+        discovery_data = {
+            "discovery_results": {
+                "timestamp": discovery_metadata.get('timestamp', datetime.now()).isoformat(),
+                "total_tests": discovery_metadata.get('total_tests', 0),
+                "categories": discovery_metadata.get('categories', 0),
+                "discovered_tests": discovery_metadata.get('discovered_tests', {})
+            }
+        }
+        return json.dumps(discovery_data, indent=2)
 
 
 class OutputObserver(ABC):
@@ -355,6 +420,18 @@ class FileOutputObserver(OutputObserver):
             else:
                 summary_text = self.strategy.format_run_summary(event.run_summary)
                 self.file_handle.write(summary_text + '\n')
+
+        elif event.event_type == 'discovery_complete':
+            # Handle discovery results for file output
+            if event.metadata.get('discovered_tests'):
+                if self.writer:
+                    # Use ThreadedFileWriter for discovery output
+                    self.writer.write_discovery_results(event.metadata)
+                else:
+                    # Direct file writing for discovery output
+                    discovery_text = self.strategy.format_discovery_results(event.metadata)
+                    self.file_handle.write(discovery_text + '\n')
+                    self.file_handle.flush()
     
     def close(self) -> None:
         """Close file observer and clean up resources."""

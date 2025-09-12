@@ -290,17 +290,34 @@ class EnhancedOutputFormatter:
         print(f"Error: {message}")
     
     def print_discovery_summary(self, discovered_tests: Dict[str, Any]) -> None:
-        """Print test discovery summary (backward compatibility).
-        
+        """Print test discovery summary and write to files.
+
         Args:
             discovered_tests: Dictionary of discovered tests
         """
         total_tests = sum(len(tests) for tests in discovered_tests.values())
+
+        # Console output (backward compatibility)
         print(f"Discovered {total_tests} test(s) across {len(discovered_tests)} categories")
-        
+
         if self.verbosity > 0:
             for category, tests in discovered_tests.items():
                 print(f"  {category}: {len(tests)} test(s)")
+
+        # File output via Observer pattern
+        if self.file_outputs:
+            # Create discovery event for file output
+            event = TestEvent(
+                event_type='discovery_complete',
+                metadata={
+                    'discovered_tests': discovered_tests,
+                    'total_tests': total_tests,
+                    'categories': len(discovered_tests),
+                    'timestamp': datetime.now()
+                }
+            )
+
+            self.publisher.notify_all(event)
     
     def print_test_categories(self, discovered_tests: Dict[str, Any]) -> None:
         """Print available test categories (backward compatibility).

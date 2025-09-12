@@ -13,6 +13,7 @@ import os
 from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
 from pathlib import Path
+from datetime import datetime
 
 from .data_structures import TestResult, TestRunSummary, serialize_test_results, format_test_results_text
 
@@ -173,6 +174,9 @@ class ThreadedFileWriter:
             elif operation.operation_type == 'header':
                 self._write_header(operation.data)
 
+            elif operation.operation_type == 'discovery':
+                self._write_discovery_results(operation.data)
+
         except Exception as e:
             # Log the error for debugging
             import sys
@@ -226,7 +230,62 @@ class ThreadedFileWriter:
             summary_text = '\n'.join(summary_lines[summary_start:])
             self.file_handle.write(summary_text)
             self.file_handle.write('\n')
-    
+
+    def _write_discovery_results(self, discovery_data: Dict[str, Any]) -> None:
+        """Write discovery results to file.
+
+        Args:
+            discovery_data: Discovery metadata containing test information
+        """
+        if self.format_type == 'json':
+            # Write JSON format discovery results
+            # Convert test objects to serializable format
+            serializable_tests = {}
+            discovered_tests = discovery_data.get('discovered_tests', {})
+
+            for category, tests in discovered_tests.items():
+                serializable_tests[category] = []
+                for test in tests:
+                    # Extract only serializable information
+                    serializable_test = {
+                        'name': test.get('test_method', 'unknown'),
+                        'class': test.get('test_class', 'unknown'),
+                        'module': test.get('test_module', 'unknown'),
+                        'file_path': str(test.get('file_path', '')) if test.get('file_path') else None,
+                        'metadata': test.get('metadata', {})
+                    }
+                    serializable_tests[category].append(serializable_test)
+
+            json_output = {
+                'discovery_results': {
+                    'timestamp': discovery_data.get('timestamp', datetime.now()).isoformat(),
+                    'total_tests': discovery_data.get('total_tests', 0),
+                    'categories': discovery_data.get('categories', 0),
+                    'discovered_tests': serializable_tests
+                }
+            }
+            import json
+            self.file_handle.write(json.dumps(json_output, indent=2))
+            self.file_handle.write('\n')
+        else:
+            # Write text format discovery results
+            self.file_handle.write("=== Wobble Test Discovery ===\n")
+            self.file_handle.write(f"Timestamp: {discovery_data.get('timestamp', datetime.now()).isoformat()}\n")
+            self.file_handle.write(f"Total tests: {discovery_data.get('total_tests', 0)}\n")
+            self.file_handle.write(f"Categories: {discovery_data.get('categories', 0)}\n")
+            self.file_handle.write("\n")
+
+            discovered_tests = discovery_data.get('discovered_tests', {})
+            for category, tests in discovered_tests.items():
+                self.file_handle.write(f"{category}: {len(tests)} test(s)\n")
+                if self.verbosity >= 2:
+                    for test in tests:
+                        self.file_handle.write(f"  - {test.get('name', 'unknown')}\n")
+            self.file_handle.write("\n")
+
+        # Flush to ensure data is written immediately
+        self.file_handle.flush()
+
     def write_header(self, command: str, start_time: str) -> None:
         """Queue header information for writing.
         
@@ -289,11 +348,19 @@ class ThreadedFileWriter:
     
     def write_summary(self, summary: TestRunSummary) -> None:
         """Queue test run summary for writing.
-        
+
         Args:
             summary: The test run summary to write
         """
         self._queue_operation('summary', summary)
+
+    def write_discovery_results(self, discovery_metadata: Dict[str, Any]) -> None:
+        """Queue discovery results for writing.
+
+        Args:
+            discovery_metadata: Discovery results metadata
+        """
+        self._queue_operation('discovery', discovery_metadata)
     
     def _queue_operation(self, operation_type: str, data: Any) -> None:
         """Queue an operation for writing.
