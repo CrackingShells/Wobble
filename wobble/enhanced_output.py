@@ -346,7 +346,9 @@ class EnhancedOutputFormatter:
         """
         class_name = test_case.__class__.__name__
         if self._is_error_holder(test_case):
-            method_name = f"<import_error:{test_case.id()}>"
+            # Create enhanced error message for _ErrorHolder
+            enhanced_info = self._parse_error_holder_description(test_case.description)
+            method_name = enhanced_info['enhanced_message']
         else:
             method_name = test_case._testMethodName
         return f"{class_name}.{method_name}"
@@ -365,7 +367,9 @@ class EnhancedOutputFormatter:
             TestResult instance
         """
         if self._is_error_holder(test_case):
-            test_name = f"<import_error:{test_case.id()}>"
+            # Create enhanced error message for _ErrorHolder
+            enhanced_info = self._parse_error_holder_description(test_case.description)
+            test_name = enhanced_info['enhanced_message']
         else:
             test_name = test_case._testMethodName
 
@@ -416,3 +420,54 @@ class EnhancedOutputFormatter:
             True if this is an _ErrorHolder, False otherwise
         """
         return test_case.__class__.__name__ == '_ErrorHolder'
+
+    def _parse_error_holder_description(self, description: str) -> dict:
+        """Parse _ErrorHolder description to extract meaningful information.
+
+        Args:
+            description: The error description from _ErrorHolder
+
+        Returns:
+            Dictionary with parsed information
+        """
+        import re
+
+        # Initialize result
+        result = {
+            'original_description': description,
+            'error_type': 'import_error',
+            'test_class': None,
+            'test_module': None,
+            'file_path': None,
+            'method_name': None,
+            'enhanced_message': description
+        }
+
+        # Parse patterns like "setUpClass (test_hatch_installer.TestHatchInstaller)"
+        setup_pattern = r'(setUpClass|setUp|tearDown|tearDownClass)\s*\(([^.]+)\.([^)]+)\)'
+        match = re.match(setup_pattern, description)
+
+        if match:
+            method_name, module_name, class_name = match.groups()
+            result.update({
+                'method_name': method_name,
+                'test_module': module_name,
+                'test_class': class_name,
+                'file_path': f"{module_name}.py",
+                'enhanced_message': f"{method_name} failed in {class_name} ({module_name}.py)"
+            })
+        else:
+            # Try to extract class and module from other patterns
+            # Pattern like "module.ClassName"
+            class_pattern = r'([^.]+)\.([^.]+)$'
+            match = re.search(class_pattern, description)
+            if match:
+                module_name, class_name = match.groups()
+                result.update({
+                    'test_module': module_name,
+                    'test_class': class_name,
+                    'file_path': f"{module_name}.py",
+                    'enhanced_message': f"Import failed for {class_name} in {module_name}.py"
+                })
+
+        return result

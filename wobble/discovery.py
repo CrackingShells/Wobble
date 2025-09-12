@@ -160,6 +160,9 @@ class TestDiscoveryEngine:
         error_description = getattr(error_holder, 'description', 'Unknown import error')
         error_id = error_holder.id() if hasattr(error_holder, 'id') else error_description
 
+        # Parse the error description for more meaningful information
+        enhanced_info = self._parse_error_holder_description(error_description)
+
         # Create error info for reporting
         error_info = {
             'error_holder': error_holder,
@@ -169,8 +172,11 @@ class TestDiscoveryEngine:
             'test_class': '_ErrorHolder',
             'test_module': 'unittest.suite',
             'directory': directory,
-            'file_path': None,
-            'metadata': {'is_error_holder': True}
+            'file_path': enhanced_info.get('file_path'),
+            'metadata': {
+                'is_error_holder': True,
+                'enhanced_info': enhanced_info
+            }
         }
 
         # Store in discovered tests under a special category
@@ -178,8 +184,78 @@ class TestDiscoveryEngine:
             self.discovered_tests['import_errors'] = []
         self.discovered_tests['import_errors'].append(error_info)
 
-        # Log the import error for debugging
-        print(f"Import/loading error detected: {error_description} in {directory}")
+        # Log the import error with enhanced information
+        enhanced_message = self._format_enhanced_error_message(enhanced_info)
+        print(f"Import/loading error detected: {enhanced_message} in {directory}")
+
+    def _parse_error_holder_description(self, description: str) -> dict:
+        """Parse _ErrorHolder description to extract meaningful information.
+
+        Args:
+            description: The error description from _ErrorHolder
+
+        Returns:
+            Dictionary with parsed information
+        """
+        import re
+
+        # Initialize result
+        result = {
+            'original_description': description,
+            'error_type': 'import_error',
+            'test_class': None,
+            'test_module': None,
+            'file_path': None,
+            'method_name': None,
+            'enhanced_message': description
+        }
+
+        # Parse patterns like "setUpClass (test_hatch_installer.TestHatchInstaller)"
+        setup_pattern = r'(setUpClass|setUp|tearDown|tearDownClass)\s*\(([^.]+)\.([^)]+)\)'
+        match = re.match(setup_pattern, description)
+
+        if match:
+            method_name, module_name, class_name = match.groups()
+            result.update({
+                'method_name': method_name,
+                'test_module': module_name,
+                'test_class': class_name,
+                'file_path': f"{module_name}.py",
+                'enhanced_message': f"{method_name} failed in {class_name} ({module_name}.py)"
+            })
+        else:
+            # Try to extract class and module from other patterns
+            # Pattern like "module.ClassName"
+            class_pattern = r'([^.]+)\.([^.]+)$'
+            match = re.search(class_pattern, description)
+            if match:
+                module_name, class_name = match.groups()
+                result.update({
+                    'test_module': module_name,
+                    'test_class': class_name,
+                    'file_path': f"{module_name}.py",
+                    'enhanced_message': f"Import failed for {class_name} in {module_name}.py"
+                })
+
+        return result
+
+    def _format_enhanced_error_message(self, enhanced_info: dict) -> str:
+        """Format an enhanced error message from parsed information.
+
+        Args:
+            enhanced_info: Parsed error information
+
+        Returns:
+            Enhanced error message string
+        """
+        if enhanced_info.get('method_name') and enhanced_info.get('test_class'):
+            return (f"{enhanced_info['method_name']} failed in {enhanced_info['test_class']} "
+                   f"(check {enhanced_info.get('file_path', 'test file')} for import issues)")
+        elif enhanced_info.get('test_class'):
+            return (f"Import failed for {enhanced_info['test_class']} "
+                   f"(check {enhanced_info.get('file_path', 'test file')} for missing dependencies)")
+        else:
+            return f"Import error: {enhanced_info['original_description']}"
     
     def _process_test(self, test_case, directory: Path) -> None:
         """Process an individual test case.

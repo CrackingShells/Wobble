@@ -157,8 +157,12 @@ class WobbleTestResult(unittest.TestResult):
             String identifier for the test
         """
         if self._is_error_holder(test):
-            # For _ErrorHolder objects, use their id() method
-            return f"_ErrorHolder.{test.id()}"
+            # For _ErrorHolder objects, create enhanced identifier
+            enhanced_info = self._parse_error_holder_description(test.description)
+            if enhanced_info.get('test_class') and enhanced_info.get('test_module'):
+                return f"_ErrorHolder.{enhanced_info['test_module']}.{enhanced_info['test_class']}.{enhanced_info.get('method_name', 'import_error')}"
+            else:
+                return f"_ErrorHolder.{test.id()}"
         return f"{test.__class__.__module__}.{test.__class__.__name__}.{test._testMethodName}"
 
     def _create_test_result(self, test, status: TestStatus, duration: float,
@@ -175,7 +179,9 @@ class WobbleTestResult(unittest.TestResult):
             TestResult instance
         """
         if self._is_error_holder(test):
-            test_name = f"<import_error:{test.id()}>"
+            # Create enhanced error message for _ErrorHolder
+            enhanced_info = self._parse_error_holder_description(test.description)
+            test_name = enhanced_info['enhanced_message']
         else:
             test_name = test._testMethodName
 
@@ -218,6 +224,57 @@ class WobbleTestResult(unittest.TestResult):
             True if this is an _ErrorHolder, False otherwise
         """
         return test_case.__class__.__name__ == '_ErrorHolder'
+
+    def _parse_error_holder_description(self, description: str) -> dict:
+        """Parse _ErrorHolder description to extract meaningful information.
+
+        Args:
+            description: The error description from _ErrorHolder
+
+        Returns:
+            Dictionary with parsed information
+        """
+        import re
+
+        # Initialize result
+        result = {
+            'original_description': description,
+            'error_type': 'import_error',
+            'test_class': None,
+            'test_module': None,
+            'file_path': None,
+            'method_name': None,
+            'enhanced_message': description
+        }
+
+        # Parse patterns like "setUpClass (test_hatch_installer.TestHatchInstaller)"
+        setup_pattern = r'(setUpClass|setUp|tearDown|tearDownClass)\s*\(([^.]+)\.([^)]+)\)'
+        match = re.match(setup_pattern, description)
+
+        if match:
+            method_name, module_name, class_name = match.groups()
+            result.update({
+                'method_name': method_name,
+                'test_module': module_name,
+                'test_class': class_name,
+                'file_path': f"{module_name}.py",
+                'enhanced_message': f"{method_name} failed in {class_name} ({module_name}.py)"
+            })
+        else:
+            # Try to extract class and module from other patterns
+            # Pattern like "module.ClassName"
+            class_pattern = r'([^.]+)\.([^.]+)$'
+            match = re.search(class_pattern, description)
+            if match:
+                module_name, class_name = match.groups()
+                result.update({
+                    'test_module': module_name,
+                    'test_class': class_name,
+                    'file_path': f"{module_name}.py",
+                    'enhanced_message': f"Import failed for {class_name} in {module_name}.py"
+                })
+
+        return result
 
 
 class TestRunner:
@@ -431,8 +488,9 @@ class TestRunner:
             Human-readable test name
         """
         if self._is_error_holder(test_case):
-            # For _ErrorHolder objects, use their description
-            return f"ImportError: {test_case.id()}"
+            # For _ErrorHolder objects, create enhanced error message
+            enhanced_info = self._parse_error_holder_description(test_case.description)
+            return f"ImportError: {enhanced_info['enhanced_message']}"
         elif hasattr(test_case, '_testMethodName'):
             class_name = test_case.__class__.__name__
             method_name = test_case._testMethodName
