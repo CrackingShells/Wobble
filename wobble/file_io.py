@@ -240,10 +240,10 @@ class ThreadedFileWriter:
             test_result: The test result to write
         """
         status_symbol = {
-            'PASS': '✓',
-            'FAIL': '✗',
-            'ERROR': 'E',
-            'SKIP': 'S'
+            'PASS': 'PASS',
+            'FAIL': 'FAIL',
+            'ERROR': 'ERROR',
+            'SKIP': 'SKIP'
         }.get(test_result.status.value, '?')
         
         line = f"{status_symbol} {test_result.classname}.{test_result.name} ({test_result.duration:.3f}s)\n"
@@ -308,18 +308,29 @@ class ThreadedFileWriter:
         """Close the file writer and clean up resources."""
         # Signal shutdown
         self.shutdown_event.set()
-        
-        # Wait for queue to empty
+
+        # Wait for queue to empty with timeout to prevent deadlocks
         if self.write_queue:
             try:
-                self.write_queue.join()
+                # Use a timeout-based approach instead of blocking join()
+                start_time = time.time()
+                timeout = 5.0  # 5 second timeout
+
+                while not self.write_queue.empty() and (time.time() - start_time) < timeout:
+                    time.sleep(0.1)  # Small delay to allow queue processing
+
+                # If queue is still not empty after timeout, log warning but continue
+                if not self.write_queue.empty():
+                    import sys
+                    print(f"Warning: File writer queue not empty after {timeout}s timeout", file=sys.stderr)
+
             except:
                 pass  # Ignore errors during shutdown
-        
+
         # Wait for writer thread to finish
         if self.writer_thread and self.writer_thread.is_alive():
             self.writer_thread.join(timeout=5.0)
-        
+
         # Close file handle
         if self.file_handle:
             try:

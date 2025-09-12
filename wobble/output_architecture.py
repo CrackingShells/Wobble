@@ -84,10 +84,10 @@ class StandardOutputStrategy(OutputStrategy):
     def format_test_result(self, test_result: TestResult, verbosity: int = 1) -> str:
         """Format test result in standard text format."""
         status_symbol = {
-            'PASS': '✓',
-            'FAIL': '✗',
-            'ERROR': 'E',
-            'SKIP': 'S'
+            'PASS': 'PASS',
+            'FAIL': 'FAIL',
+            'ERROR': 'ERROR',
+            'SKIP': 'SKIP'
         }.get(test_result.status.value, '?')
         
         result = f"{status_symbol} {test_result.classname}.{test_result.name}"
@@ -241,7 +241,7 @@ class ConsoleOutputObserver(OutputObserver):
         """Handle test event by printing to console."""
         if self.quiet and event.event_type not in ['run_end']:
             return
-        
+
         with self.lock:
             if event.event_type == 'run_start':
                 if event.metadata.get('command') and event.metadata.get('start_time'):
@@ -250,13 +250,20 @@ class ConsoleOutputObserver(OutputObserver):
                         event.metadata['start_time']
                     )
                     print(header)
-            
+
+            elif event.event_type == 'test_start':
+                # Always show test start for debugging hanging tests
+                test_name = event.metadata.get('test_name', 'Unknown')
+                test_class = event.metadata.get('test_class', 'Unknown')
+                full_name = f"{test_class}.{test_name}"
+                print(f"Starting {full_name}...", end=" ", flush=True)
+
             elif event.event_type == 'test_end' and event.test_result:
                 result_text = self.strategy.format_test_result(event.test_result)
                 if self.use_color:
                     result_text = self._colorize_output(result_text, event.test_result.status.value)
                 print(result_text)
-            
+
             elif event.event_type == 'run_end' and event.run_summary:
                 summary_text = self.strategy.format_run_summary(event.run_summary)
                 print(summary_text)
