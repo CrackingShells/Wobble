@@ -19,9 +19,9 @@ from wobble.enhanced_output import EnhancedOutputFormatter
 from wobble.data_structures import TestResult, TestStatus, ErrorInfo
 
 
-class MockTestCase:
+class MockTest:
     """Mock test case for testing."""
-    
+
     def __init__(self, class_name: str, method_name: str, metadata: dict = None):
         self.__class__.__name__ = class_name
         self._testMethodName = method_name
@@ -123,8 +123,8 @@ class TestEnhancedOutputFormatter(unittest.TestCase):
         formatter.start_test_run("wobble tests/", 2)
         
         # Create mock test cases
-        test_case_1 = MockTestCase("TestClass", "test_pass")
-        test_case_2 = MockTestCase("TestClass", "test_fail")
+        test_case_1 = MockTest("TestClass", "test_pass")
+        test_case_2 = MockTest("TestClass", "test_fail")
         
         # Simulate test execution
         formatter.notify_test_start(test_case_1)
@@ -220,7 +220,7 @@ class TestEnhancedOutputFormatter(unittest.TestCase):
         # Run a simple test
         formatter.start_test_run("wobble tests/", 1)
         
-        test_case = MockTestCase("TestClass", "test_example")
+        test_case = MockTest("TestClass", "test_example")
         formatter.print_test_success(test_case, 0.123)
         
         formatter.end_test_run()
@@ -246,7 +246,7 @@ class TestEnhancedOutputFormatter(unittest.TestCase):
         
         formatter.start_test_run("wobble tests/", 1)
         
-        test_case = MockTestCase("TestClass", "test_error")
+        test_case = MockTest("TestClass", "test_error")
         
         # Create error info
         try:
@@ -277,7 +277,7 @@ class TestEnhancedOutputFormatter(unittest.TestCase):
         
         formatter.start_test_run("wobble tests/", 1)
         
-        test_case = MockTestCase("TestClass", "test_skip")
+        test_case = MockTest("TestClass", "test_skip")
         formatter.print_test_skip(test_case, "Test skipped for testing", 0.0)
         
         formatter.end_test_run()
@@ -295,7 +295,7 @@ class TestEnhancedOutputFormatter(unittest.TestCase):
         with EnhancedOutputFormatter(format_type='standard') as formatter:
             formatter.start_test_run("wobble tests/", 1)
             
-            test_case = MockTestCase("TestClass", "test_context")
+            test_case = MockTest("TestClass", "test_context")
             formatter.print_test_success(test_case, 0.123)
             
             formatter.end_test_run()
@@ -313,8 +313,8 @@ class TestEnhancedOutputFormatter(unittest.TestCase):
         formatter.start_test_run("wobble tests/", 1)
         
         # Test case with metadata
-        test_case = MockTestCase(
-            "TestClass", 
+        test_case = MockTest(
+            "TestClass",
             "test_with_metadata",
             metadata={'category': 'regression', 'priority': 'high'}
         )
@@ -343,7 +343,7 @@ class TestEnhancedOutputFormatter(unittest.TestCase):
         start_time = time.time()
         
         for i in range(100):
-            test_case = MockTestCase("TestClass", f"test_{i:03d}")
+            test_case = MockTest("TestClass", f"test_{i:03d}")
             formatter.print_test_success(test_case, 0.001)
         
         end_time = time.time()
