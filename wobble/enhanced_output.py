@@ -14,7 +14,6 @@ from .output_architecture import (
     StandardOutputStrategy, VerboseOutputStrategy, JSONOutputStrategy
 )
 from .data_structures import TestResult, TestStatus, ErrorInfo, TestRunSummary
-from .cli import reconstruct_command
 
 
 class EnhancedOutputFormatter:
