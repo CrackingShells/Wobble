@@ -79,6 +79,10 @@ class ThreadedFileWriter:
         # Performance tracking
         self.operations_written = 0
         self.start_time = time.time()
+
+        # Debug counters for queue operations
+        self.put_count = 0
+        self.task_done_count = 0
         
         self._start_writer_thread()
     
@@ -106,57 +110,77 @@ class ThreadedFileWriter:
             raise
     
     def _writer_loop(self) -> None:
-        """Main writer thread loop."""
+        """Main writer thread loop - simplified approach."""
         try:
             while not self.shutdown_event.is_set():
                 try:
                     # Get operation from queue with timeout
-                    operation = self.write_queue.get(timeout=0.1)
-                    
-                    # Store operation for ordered processing
-                    self.pending_writes[operation.sequence_id] = operation
-                    
-                    # Process any operations that are ready
-                    self._process_pending_writes()
-                    
+                    operation = self.write_queue.get(timeout=1.0)
+
+                    # Process operation immediately (no complex ordering)
+                    self._write_operation(operation)
+
                     # Mark task as done
                     self.write_queue.task_done()
-                    
+                    self.task_done_count += 1
+
                 except queue.Empty:
                     # Timeout is normal, continue loop
                     continue
-                    
+
+            # Process any remaining operations after shutdown signal
+            while True:
+                try:
+                    operation = self.write_queue.get_nowait()
+                    self._write_operation(operation)
+                    self.write_queue.task_done()
+                    self.task_done_count += 1
+                except queue.Empty:
+                    break
+
         except Exception as e:
+            # Log the error for debugging
+            import sys
+            print(f"ERROR in writer thread: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
             self.last_error = e
             self.error_event.set()
     
     def _process_pending_writes(self) -> None:
-        """Process pending writes in sequence order."""
-        while self.next_write_sequence in self.pending_writes:
-            operation = self.pending_writes.pop(self.next_write_sequence)
-            self._write_operation(operation)
-            self.next_write_sequence += 1
-            self.operations_written += 1
-            
-            # Flush periodically for performance
-            if self.operations_written % 10 == 0:
-                self.file_handle.flush()
+        """Process pending writes in sequence order - DEPRECATED in simplified approach."""
+        # This method is no longer used in the simplified approach
+        pass
     
     def _write_operation(self, operation: WriteOperation) -> None:
         """Write a single operation to the file.
-        
+
         Args:
             operation: The write operation to execute
         """
-        if operation.operation_type == 'test_result':
-            self.test_results.append(operation.data)
-            
-        elif operation.operation_type == 'summary':
-            self.run_summary = operation.data
-            self._write_final_output()
-            
-        elif operation.operation_type == 'header':
-            self._write_header(operation.data)
+        try:
+            if operation.operation_type == 'test_result':
+                self.test_results.append(operation.data)
+
+                # For text format, write individual results immediately
+                if self.format_type == 'txt':
+                    self._write_text_result(operation.data)
+
+            elif operation.operation_type == 'summary':
+                self.run_summary = operation.data
+                self._write_final_output()
+
+            elif operation.operation_type == 'header':
+                self._write_header(operation.data)
+
+        except Exception as e:
+            # Log the error for debugging
+            import sys
+            print(f"ERROR in _write_operation: {e}", file=sys.stderr)
+            print(f"Operation type: {operation.operation_type}", file=sys.stderr)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+            raise
     
     def _write_header(self, header_data: Dict[str, Any]) -> None:
         """Write file header information.
@@ -217,21 +241,17 @@ class ThreadedFileWriter:
     
     def write_test_result(self, test_result: TestResult) -> None:
         """Queue a test result for writing.
-        
+
         Args:
             test_result: The test result to write
-            
+
         Raises:
             RuntimeError: If the writer has encountered an error
         """
         if self.error_event.is_set():
             raise RuntimeError(f"File writer error: {self.last_error}")
-        
+
         self._queue_operation('test_result', test_result)
-        
-        # For text format, write individual results immediately
-        if self.format_type == 'txt':
-            self._write_text_result(test_result)
     
     def _write_text_result(self, test_result: TestResult) -> None:
         """Write individual test result in text format.
@@ -301,6 +321,7 @@ class ThreadedFileWriter:
         try:
             # Use timeout to avoid blocking indefinitely
             self.write_queue.put(operation, timeout=1.0)
+            self.put_count += 1
         except queue.Full:
             raise RuntimeError("File writer queue is full - cannot accept more operations")
     
@@ -309,21 +330,21 @@ class ThreadedFileWriter:
         # Signal shutdown
         self.shutdown_event.set()
 
-        # Wait for queue to empty with timeout to prevent deadlocks
+        # Wait for queue to empty with timeout (avoid deadlock)
         if self.write_queue:
             try:
-                # Use a timeout-based approach instead of blocking join()
+                # Use timeout-based approach instead of queue.join() to avoid deadlock
                 start_time = time.time()
-                timeout = 5.0  # 5 second timeout
-
+                timeout = 5.0
                 while not self.write_queue.empty() and (time.time() - start_time) < timeout:
-                    time.sleep(0.1)  # Small delay to allow queue processing
+                    time.sleep(0.1)
 
-                # If queue is still not empty after timeout, log warning but continue
+                # If queue is still not empty after timeout, log debug info
                 if not self.write_queue.empty():
                     import sys
-                    print(f"Warning: File writer queue not empty after {timeout}s timeout", file=sys.stderr)
-
+                    print(f"WARNING: Queue not empty after {timeout}s timeout. "
+                          f"put_count={self.put_count}, task_done_count={self.task_done_count}",
+                          file=sys.stderr)
             except:
                 pass  # Ignore errors during shutdown
 
