@@ -137,14 +137,62 @@ class TestDiscoveryEngine:
         except Exception as e:
             # Log discovery errors but continue
             print(f"Warning: Could not discover tests in {directory}: {e}")
+
+    def _is_error_holder(self, test_case) -> bool:
+        """Check if test case is an _ErrorHolder representing import/loading failure.
+
+        Args:
+            test_case: The test case object to check
+
+        Returns:
+            True if this is an _ErrorHolder, False otherwise
+        """
+        return test_case.__class__.__name__ == '_ErrorHolder'
+
+    def _process_error_holder(self, error_holder, directory: Path) -> None:
+        """Process an _ErrorHolder object representing an import/loading error.
+
+        Args:
+            error_holder: The _ErrorHolder object
+            directory: Directory where the error occurred
+        """
+        # Extract error information from the _ErrorHolder
+        error_description = getattr(error_holder, 'description', 'Unknown import error')
+        error_id = error_holder.id() if hasattr(error_holder, 'id') else error_description
+
+        # Create error info for reporting
+        error_info = {
+            'error_holder': error_holder,
+            'error_type': 'import_failure',
+            'error_description': error_description,
+            'error_id': error_id,
+            'test_class': '_ErrorHolder',
+            'test_module': 'unittest.suite',
+            'directory': directory,
+            'file_path': None,
+            'metadata': {'is_error_holder': True}
+        }
+
+        # Store in discovered tests under a special category
+        if 'import_errors' not in self.discovered_tests:
+            self.discovered_tests['import_errors'] = []
+        self.discovered_tests['import_errors'].append(error_info)
+
+        # Log the import error for debugging
+        print(f"Import/loading error detected: {error_description} in {directory}")
     
     def _process_test(self, test_case, directory: Path) -> None:
         """Process an individual test case.
-        
+
         Args:
-            test_case: The unittest test case
+            test_case: The unittest test case or _ErrorHolder
             directory: Directory where the test was found
         """
+        # Check if this is an _ErrorHolder representing an import/loading error
+        if self._is_error_holder(test_case):
+            self._process_error_holder(test_case, directory)
+            return
+
         test_info = {
             'test_case': test_case,
             'test_method': test_case._testMethodName,

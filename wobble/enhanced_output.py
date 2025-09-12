@@ -333,15 +333,18 @@ class EnhancedOutputFormatter:
     
     def _get_test_name(self, test_case) -> str:
         """Get the full test name from a test case.
-        
+
         Args:
-            test_case: unittest.TestCase instance
-            
+            test_case: unittest.TestCase instance or _ErrorHolder
+
         Returns:
             Full test name in format 'ClassName.test_method'
         """
         class_name = test_case.__class__.__name__
-        method_name = test_case._testMethodName
+        if self._is_error_holder(test_case):
+            method_name = f"<import_error:{test_case.id()}>"
+        else:
+            method_name = test_case._testMethodName
         return f"{class_name}.{method_name}"
     
     def _create_test_result(self, test_case, status: TestStatus, duration: float, 
@@ -357,8 +360,13 @@ class EnhancedOutputFormatter:
         Returns:
             TestResult instance
         """
+        if self._is_error_holder(test_case):
+            test_name = f"<import_error:{test_case.id()}>"
+        else:
+            test_name = test_case._testMethodName
+
         return TestResult(
-            name=test_case._testMethodName,
+            name=test_name,
             classname=test_case.__class__.__name__,
             status=status,
             duration=duration,
@@ -393,3 +401,14 @@ class EnhancedOutputFormatter:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         self.close()
+
+    def _is_error_holder(self, test_case) -> bool:
+        """Check if test case is an _ErrorHolder representing import/loading failure.
+
+        Args:
+            test_case: The test case object to check
+
+        Returns:
+            True if this is an _ErrorHolder, False otherwise
+        """
+        return test_case.__class__.__name__ == '_ErrorHolder'

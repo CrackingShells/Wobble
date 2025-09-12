@@ -48,15 +48,17 @@ class WobbleTestResult(unittest.TestResult):
                 metadata.update(test._wobble_metadata)
 
             # Then, check for method-level metadata (from decorators)
-            test_method = getattr(test, test._testMethodName, None)
-            if test_method:
-                try:
-                    from .decorators import get_test_metadata
-                    method_metadata = get_test_metadata(test_method)
-                    metadata.update(method_metadata)
-                except ImportError:
-                    # Decorators module may not exist yet
-                    pass
+            # Skip metadata extraction for _ErrorHolder objects
+            if not self._is_error_holder(test):
+                test_method = getattr(test, test._testMethodName, None)
+                if test_method:
+                    try:
+                        from .decorators import get_test_metadata
+                        method_metadata = get_test_metadata(test_method)
+                        metadata.update(method_metadata)
+                    except ImportError:
+                        # Decorators module may not exist yet
+                        pass
 
             self.test_metadata[test] = metadata
 
@@ -149,11 +151,14 @@ class WobbleTestResult(unittest.TestResult):
         """Get a unique identifier for a test case.
 
         Args:
-            test: unittest.TestCase instance
+            test: unittest.TestCase instance or _ErrorHolder
 
         Returns:
             String identifier for the test
         """
+        if self._is_error_holder(test):
+            # For _ErrorHolder objects, use their id() method
+            return f"_ErrorHolder.{test.id()}"
         return f"{test.__class__.__module__}.{test.__class__.__name__}.{test._testMethodName}"
 
     def _create_test_result(self, test, status: TestStatus, duration: float,
@@ -169,8 +174,13 @@ class WobbleTestResult(unittest.TestResult):
         Returns:
             TestResult instance
         """
+        if self._is_error_holder(test):
+            test_name = f"<import_error:{test.id()}>"
+        else:
+            test_name = test._testMethodName
+
         return TestResult(
-            name=test._testMethodName,
+            name=test_name,
             classname=test.__class__.__name__,
             status=status,
             duration=duration,
@@ -197,6 +207,17 @@ class WobbleTestResult(unittest.TestResult):
             message=str(exc_value),
             traceback=''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
         )
+
+    def _is_error_holder(self, test_case) -> bool:
+        """Check if test case is an _ErrorHolder representing import/loading failure.
+
+        Args:
+            test_case: The test case object to check
+
+        Returns:
+            True if this is an _ErrorHolder, False otherwise
+        """
+        return test_case.__class__.__name__ == '_ErrorHolder'
 
 
 class TestRunner:
@@ -402,16 +423,30 @@ class TestRunner:
     
     def _get_test_name(self, test_case) -> str:
         """Get a readable name for a test case.
-        
+
         Args:
-            test_case: unittest.TestCase instance
-            
+            test_case: unittest.TestCase instance or _ErrorHolder
+
         Returns:
             Human-readable test name
         """
-        if hasattr(test_case, '_testMethodName'):
+        if self._is_error_holder(test_case):
+            # For _ErrorHolder objects, use their description
+            return f"ImportError: {test_case.id()}"
+        elif hasattr(test_case, '_testMethodName'):
             class_name = test_case.__class__.__name__
             method_name = test_case._testMethodName
             return f"{class_name}.{method_name}"
-        
+
         return str(test_case)
+
+    def _is_error_holder(self, test_case) -> bool:
+        """Check if test case is an _ErrorHolder representing import/loading failure.
+
+        Args:
+            test_case: The test case object to check
+
+        Returns:
+            True if this is an _ErrorHolder, False otherwise
+        """
+        return test_case.__class__.__name__ == '_ErrorHolder'
