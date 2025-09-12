@@ -31,6 +31,12 @@ wobble
 wobble --category regression
 wobble --category integration
 
+# Save results to file
+wobble --log-file test_results.json
+
+# CI/CD integration with file output
+wobble --format json --log-file ci_results.json --log-verbosity 3
+
 # Get help
 wobble --help
 ```
