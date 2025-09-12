@@ -52,6 +52,7 @@ class EnhancedOutputFormatter:
         self.test_results: List[TestResult] = []
         self.run_start_time: Optional[datetime] = None
         self.run_command: Optional[str] = None
+        self.run_ended: bool = False  # Guard against duplicate end_test_run calls
         
         # Setup observers
         self._setup_console_observer()
@@ -153,12 +154,15 @@ class EnhancedOutputFormatter:
     
     def end_test_run(self, exit_code: int = 0) -> None:
         """End the test run and notify observers with summary.
-        
+
         Args:
             exit_code: The exit code for the test run
         """
-        if not self.run_start_time:
+        if not self.run_start_time or self.run_ended:
             return
+
+        # Mark run as ended to prevent duplicate calls
+        self.run_ended = True
         
         end_time = datetime.now()
         duration = (end_time - self.run_start_time).total_seconds()
