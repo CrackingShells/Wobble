@@ -381,7 +381,14 @@ def main() -> int:
         if args.discover_only:
             # Use new discovery verbosity output
             discovery_output = discovery_engine.get_discovery_output(verbosity=args.discover_verbosity)
-            print(discovery_output)
+
+            # If file outputs are configured, use enhanced formatter for file integration
+            if file_configs:
+                # Use enhanced formatter to handle both console and file output
+                output_formatter.print_discovery_output(discovery_output, args.discover_verbosity)
+            else:
+                # Console only output
+                print(discovery_output)
             return 0
         
         # Filter tests based on arguments

@@ -432,6 +432,18 @@ class FileOutputObserver(OutputObserver):
                     discovery_text = self.strategy.format_discovery_results(event.metadata)
                     self.file_handle.write(discovery_text + '\n')
                     self.file_handle.flush()
+
+        elif event.event_type == 'discovery_summary':
+            # Handle discovery summary output (new enhanced discovery feature)
+            discovery_output = event.metadata.get('discovery_output', '')
+            if discovery_output:
+                if self.writer:
+                    # Use ThreadedFileWriter for discovery output
+                    self.writer.write_text(discovery_output)
+                else:
+                    # Direct file writing for discovery output
+                    self.file_handle.write(discovery_output + '\n')
+                    self.file_handle.flush()
     
     def close(self) -> None:
         """Close file observer and clean up resources."""

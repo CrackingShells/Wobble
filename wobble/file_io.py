@@ -177,6 +177,11 @@ class ThreadedFileWriter:
             elif operation.operation_type == 'discovery':
                 self._write_discovery_results(operation.data)
 
+            elif operation.operation_type == 'text':
+                # Write raw text directly to file
+                self.file_handle.write(operation.data + '\n')
+                self.file_handle.flush()
+
         except Exception as e:
             # Log the error for debugging
             import sys
@@ -361,6 +366,14 @@ class ThreadedFileWriter:
             discovery_metadata: Discovery results metadata
         """
         self._queue_operation('discovery', discovery_metadata)
+
+    def write_text(self, text: str) -> None:
+        """Queue raw text for writing.
+
+        Args:
+            text: Raw text to write to file
+        """
+        self._queue_operation('text', text)
     
     def _queue_operation(self, operation_type: str, data: Any) -> None:
         """Queue an operation for writing.
