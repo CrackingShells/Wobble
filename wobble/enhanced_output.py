@@ -472,12 +472,13 @@ class EnhancedOutputFormatter:
 
         return result
 
-    def print_discovery_output(self, discovery_output: str, verbosity: int = 1) -> None:
+    def print_discovery_output(self, discovery_output: str, verbosity: int = 1, discovery_data: dict = None) -> None:
         """Print discovery output to both console and file outputs.
 
         Args:
-            discovery_output: Formatted discovery output string
+            discovery_output: Formatted discovery output string for console
             verbosity: Discovery verbosity level (1-3)
+            discovery_data: Structured discovery data for JSON formatting
         """
         # Print to console (unless quiet)
         if not self.quiet:
@@ -485,11 +486,12 @@ class EnhancedOutputFormatter:
 
         # Send to file observers if configured
         if self.file_outputs:
-            # Create discovery event for file output
+            # Create discovery event for file output with structured data
             discovery_event = TestEvent(
                 event_type='discovery_summary',
                 metadata={
-                    'discovery_output': discovery_output,
+                    'discovery_output': discovery_output,  # Text format fallback
+                    'discovery_data': discovery_data,      # Structured data for JSON
                     'verbosity': verbosity,
                     'timestamp': datetime.now(),
                     'command_info': {

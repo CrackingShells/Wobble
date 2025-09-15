@@ -379,13 +379,15 @@ def main() -> int:
         
         # Handle discover-only option
         if args.discover_only:
-            # Use new discovery verbosity output
+            # Get discovery data for console output (uses --discover-verbosity)
             discovery_output = discovery_engine.get_discovery_output(verbosity=args.discover_verbosity)
 
             # If file outputs are configured, use enhanced formatter for file integration
             if file_configs:
+                # Get discovery data for file output (uses --log-verbosity)
+                file_discovery_data = discovery_engine.get_discovery_data(verbosity=args.log_verbosity)
                 # Use enhanced formatter to handle both console and file output
-                output_formatter.print_discovery_output(discovery_output, args.discover_verbosity)
+                output_formatter.print_discovery_output(discovery_output, args.log_verbosity, file_discovery_data)
             else:
                 # Console only output
                 print(discovery_output)
