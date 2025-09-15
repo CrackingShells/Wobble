@@ -5,6 +5,16 @@ This article covers:
 - Usage patterns and examples
 - Configuration and environment variables
 
+## Table of Contents
+
+- [Command Syntax](#command-syntax)
+- [Test Selection Options](#test-selection-options)
+- [Output Format Options](#output-format-options)
+- [Discovery Options](#discovery-options)
+- [Repository Options](#repository-options)
+- [File Output Options](#file-output-options)
+- [Environment Variables](#environment-variables)
+
 ## Command Syntax
 
 ```bash
@@ -208,6 +218,103 @@ wobble --path ../other-project
 
 # Use environment variable
 wobble --path $PROJECT_ROOT
+```
+
+## File Output Options
+
+### Log File Configuration
+
+Control test result logging to files:
+
+```bash
+--log-file [LOG_FILE]           # Enable file output (auto-timestamp if no filename)
+--log-file-format {txt,json,auto}  # Output format for log files
+--log-verbosity {1,2,3}         # Verbosity level for file output
+--log-append                    # Append to existing file
+--log-overwrite                 # Overwrite existing file (default)
+```
+
+**Examples:**
+```bash
+# Auto-timestamped JSON output
+wobble --log-file
+
+# Specific filename with text format
+wobble --log-file results.txt --log-file-format txt
+
+# High verbosity JSON for CI
+wobble --log-file ci_results.json --log-file-format json --log-verbosity 3
+
+# Append to existing log file
+wobble --log-file daily_tests.txt --log-append
+
+# Overwrite previous results (default behavior)
+wobble --log-file test_results.json --log-overwrite
+```
+
+### File Output Formats
+
+**Text Format** (human-readable):
+```bash
+wobble --log-file results.txt --log-file-format txt
+```
+- Clean test results with timing information
+- Error details and stack traces
+- Summary statistics
+- Ideal for manual review and debugging
+
+**JSON Format** (machine-readable):
+```bash
+wobble --log-file results.json --log-file-format json
+```
+- Structured test results with metadata
+- Complete test execution information
+- CI/CD integration support
+- Programmatic parsing and analysis
+
+**Auto Format** (intelligent detection):
+```bash
+wobble --log-file results.json --log-file-format auto
+```
+- JSON for .json file extensions
+- Text for all other extensions
+- Convenient default behavior
+
+### File Output Verbosity Levels
+
+Control the amount of detail in file output:
+
+```bash
+--log-verbosity 1               # Basic results (default)
+--log-verbosity 2               # Include test metadata and timing
+--log-verbosity 3               # Full details with error traces
+```
+
+**Verbosity Level Examples:**
+```bash
+# Level 1: Basic test results
+wobble --log-file basic.json --log-verbosity 1
+
+# Level 2: Include metadata and detailed timing
+wobble --log-file detailed.json --log-verbosity 2
+
+# Level 3: Full information including error traces
+wobble --log-file complete.json --log-verbosity 3
+```
+
+### File Management Options
+
+Control how files are handled:
+
+```bash
+# Append mode - add to existing file
+wobble --log-file continuous.txt --log-append
+
+# Overwrite mode - replace existing file (default)
+wobble --log-file fresh_results.json --log-overwrite
+
+# Auto-timestamped files (prevents overwrites)
+wobble --log-file  # Creates wobble_results_YYYYMMDD_HHMMSS.json
 ```
 
 ## Environment Variables

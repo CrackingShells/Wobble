@@ -43,6 +43,15 @@ Component responsible for formatting test results in multiple formats (standard,
 **Test Runner**
 Enhanced unittest runner that executes tests with timing information, metadata tracking, and performance metrics collection.
 
+**File Output System**
+Concurrent file writing system that saves test results to files while maintaining console output. Supports multiple formats (JSON, text) with configurable verbosity levels and file management options.
+
+**Output Observer**
+Component implementing the Observer pattern to coordinate output between multiple destinations (console and file). Enables simultaneous output to different formats and locations.
+
+**Threaded File Writer**
+Background file writing component that uses queue-based operations to write test results without blocking test execution. Provides ordered processing and graceful shutdown handling.
+
 ## Technical Terms
 
 ### Metadata

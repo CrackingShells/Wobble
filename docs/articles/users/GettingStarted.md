@@ -3,6 +3,7 @@
 This article covers:
 - Installation and setup procedures
 - Basic usage patterns and commands
+- File output and logging capabilities
 - Initial test execution and validation
 
 ## Installation
@@ -168,6 +169,46 @@ Example output:
 ..........F.
 ```
 
+## File Output
+
+### Saving Test Results
+
+Save test results to files for later analysis or CI/CD integration:
+
+```bash
+# Auto-timestamped JSON file
+wobble --log-file
+
+# Specific filename with text format
+wobble --log-file test_results.txt --log-file-format txt
+
+# JSON format for CI integration
+wobble --log-file ci_results.json --log-file-format json
+```
+
+### File Output Examples
+
+**Basic file logging:**
+```bash
+# Creates wobble_results_20250912_143022.json
+wobble --log-file
+```
+
+**Custom filename with text format:**
+```bash
+wobble --log-file daily_tests.txt --log-file-format txt --log-verbosity 2
+```
+
+**High-detail JSON for debugging:**
+```bash
+wobble --log-file debug_results.json --log-verbosity 3
+```
+
+**Continuous logging (append mode):**
+```bash
+wobble --log-file continuous.log --log-append --log-file-format txt
+```
+
 ## Repository Integration
 
 ### Automatic Repository Detection
@@ -217,17 +258,20 @@ wobble --exclude-slow
 
 ### CI/CD Integration
 
-For continuous integration:
+For continuous integration with file output:
 
 ```bash
-# JSON output for parsing
-wobble --format json --exclude-ci
+# JSON output for parsing with file logging
+wobble --format json --log-file ci_results.json --log-verbosity 3 --exclude-ci
 
-# Regression tests only
-wobble --category regression --format json
+# Regression tests with file output
+wobble --category regression --log-file regression_results.json --log-file-format json
 
-# All tests with machine-readable output
-wobble --format json
+# Quiet console with detailed file logging
+wobble --quiet --log-file detailed.json --log-verbosity 3
+
+# Multiple output destinations
+wobble --format minimal --log-file ci_archive.json --log-append
 ```
 
 ### Pre-commit Validation

@@ -7,16 +7,19 @@ output formatting and timing capabilities.
 import unittest
 import time
 import sys
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from io import StringIO
+from datetime import datetime
 
 from .output import OutputFormatter
+from .enhanced_output import EnhancedOutputFormatter
+from .data_structures import TestResult, TestStatus, ErrorInfo
 
 
 class WobbleTestResult(unittest.TestResult):
     """Enhanced test result class with timing and metadata tracking."""
 
-    def __init__(self, output_formatter: OutputFormatter):
+    def __init__(self, output_formatter: Union[OutputFormatter, EnhancedOutputFormatter]):
         super().__init__()
         self.output_formatter = output_formatter
         self.test_timings = {}
@@ -24,6 +27,7 @@ class WobbleTestResult(unittest.TestResult):
         self.start_time = None
         self.current_test = None
         self._test_execution_count = {}  # Track execution count per test
+        self.enhanced_mode = isinstance(output_formatter, EnhancedOutputFormatter)
 
     def startTest(self, test):
         """Called when a test starts."""
@@ -37,13 +41,32 @@ class WobbleTestResult(unittest.TestResult):
 
         # Extract test metadata (only on first execution)
         if self._test_execution_count[test_id] == 1:
-            test_method = getattr(test, test._testMethodName, None)
-            if test_method:
-                from .decorators import get_test_metadata
-                self.test_metadata[test] = get_test_metadata(test_method)
+            metadata = {}
 
-        # Print test start if verbose
-        self.output_formatter.print_test_start(test)
+            # First, check for instance-level metadata (for mock tests)
+            if hasattr(test, '_wobble_metadata'):
+                metadata.update(test._wobble_metadata)
+
+            # Then, check for method-level metadata (from decorators)
+            # Skip metadata extraction for _ErrorHolder objects
+            if not self._is_error_holder(test):
+                test_method = getattr(test, test._testMethodName, None)
+                if test_method:
+                    try:
+                        from .decorators import get_test_metadata
+                        method_metadata = get_test_metadata(test_method)
+                        metadata.update(method_metadata)
+                    except ImportError:
+                        # Decorators module may not exist yet
+                        pass
+
+            self.test_metadata[test] = metadata
+
+        # Notify output formatter of test start
+        if self.enhanced_mode:
+            self.output_formatter.notify_test_start(test)
+        else:
+            self.output_formatter.print_test_start(test)
 
     def stopTest(self, test):
         """Called when a test ends."""
@@ -77,48 +100,195 @@ class WobbleTestResult(unittest.TestResult):
         """Called when a test passes."""
         super().addSuccess(test)
         duration = self._calculate_current_test_duration()
-        self.output_formatter.print_test_success(test, duration)
+
+        if self.enhanced_mode:
+            # Create TestResult and notify enhanced formatter
+            test_result = self._create_test_result(test, TestStatus.PASS, duration)
+            self.output_formatter.notify_test_end(test_result)
+        else:
+            self.output_formatter.print_test_success(test, duration)
 
     def addError(self, test, err):
         """Called when a test has an error."""
         super().addError(test, err)
         duration = self._calculate_current_test_duration()
-        self.output_formatter.print_test_error(test, err, duration)
+
+        if self.enhanced_mode:
+            # Create TestResult with error info and notify enhanced formatter
+            error_info = self._create_error_info(err)
+            test_result = self._create_test_result(test, TestStatus.ERROR, duration, error_info)
+            self.output_formatter.notify_test_end(test_result)
+        else:
+            self.output_formatter.print_test_error(test, err, duration)
 
     def addFailure(self, test, err):
         """Called when a test fails."""
         super().addFailure(test, err)
         duration = self._calculate_current_test_duration()
-        self.output_formatter.print_test_failure(test, err, duration)
-    
+
+        if self.enhanced_mode:
+            # Create TestResult with error info and notify enhanced formatter
+            error_info = self._create_error_info(err)
+            test_result = self._create_test_result(test, TestStatus.FAIL, duration, error_info)
+            self.output_formatter.notify_test_end(test_result)
+        else:
+            self.output_formatter.print_test_failure(test, err, duration)
+
     def addSkip(self, test, reason):
         """Called when a test is skipped."""
         super().addSkip(test, reason)
-        self.output_formatter.print_test_skip(test, reason, self.test_timings.get(test, 0))
+        duration = self.test_timings.get(test, 0)
+
+        if self.enhanced_mode:
+            # Create TestResult for skip and notify enhanced formatter
+            test_result = self._create_test_result(test, TestStatus.SKIP, duration)
+            test_result.metadata['skip_reason'] = reason
+            self.output_formatter.notify_test_end(test_result)
+        else:
+            self.output_formatter.print_test_skip(test, reason, duration)
 
     def _get_test_id(self, test):
         """Get a unique identifier for a test case.
 
         Args:
-            test: unittest.TestCase instance
+            test: unittest.TestCase instance or _ErrorHolder
 
         Returns:
             String identifier for the test
         """
+        if self._is_error_holder(test):
+            # For _ErrorHolder objects, create enhanced identifier
+            enhanced_info = self._parse_error_holder_description(test.description)
+            if enhanced_info.get('test_class') and enhanced_info.get('test_module'):
+                return f"_ErrorHolder.{enhanced_info['test_module']}.{enhanced_info['test_class']}.{enhanced_info.get('method_name', 'import_error')}"
+            else:
+                return f"_ErrorHolder.{test.id()}"
         return f"{test.__class__.__module__}.{test.__class__.__name__}.{test._testMethodName}"
+
+    def _create_test_result(self, test, status: TestStatus, duration: float,
+                          error_info: Optional[ErrorInfo] = None) -> TestResult:
+        """Create a TestResult from a test case.
+
+        Args:
+            test: unittest.TestCase instance
+            status: Test status
+            duration: Test execution time
+            error_info: Optional error information
+
+        Returns:
+            TestResult instance
+        """
+        if self._is_error_holder(test):
+            # Create enhanced error message for _ErrorHolder
+            enhanced_info = self._parse_error_holder_description(test.description)
+            test_name = enhanced_info['enhanced_message']
+        else:
+            test_name = test._testMethodName
+
+        return TestResult(
+            name=test_name,
+            classname=test.__class__.__name__,
+            status=status,
+            duration=duration,
+            timestamp=datetime.now(),
+            metadata=self.test_metadata.get(test, {}),
+            error_info=error_info
+        )
+
+    def _create_error_info(self, err_info) -> ErrorInfo:
+        """Create ErrorInfo from error tuple.
+
+        Args:
+            err_info: Error information tuple (type, value, traceback)
+
+        Returns:
+            ErrorInfo instance
+        """
+        import traceback
+
+        exc_type, exc_value, exc_traceback = err_info
+
+        return ErrorInfo(
+            type=exc_type.__name__,
+            message=str(exc_value),
+            traceback=''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+        )
+
+    def _is_error_holder(self, test_case) -> bool:
+        """Check if test case is an _ErrorHolder representing import/loading failure.
+
+        Args:
+            test_case: The test case object to check
+
+        Returns:
+            True if this is an _ErrorHolder, False otherwise
+        """
+        return test_case.__class__.__name__ == '_ErrorHolder'
+
+    def _parse_error_holder_description(self, description: str) -> dict:
+        """Parse _ErrorHolder description to extract meaningful information.
+
+        Args:
+            description: The error description from _ErrorHolder
+
+        Returns:
+            Dictionary with parsed information
+        """
+        import re
+
+        # Initialize result
+        result = {
+            'original_description': description,
+            'error_type': 'import_error',
+            'test_class': None,
+            'test_module': None,
+            'file_path': None,
+            'method_name': None,
+            'enhanced_message': description
+        }
+
+        # Parse patterns like "setUpClass (test_hatch_installer.TestHatchInstaller)"
+        setup_pattern = r'(setUpClass|setUp|tearDown|tearDownClass)\s*\(([^.]+)\.([^)]+)\)'
+        match = re.match(setup_pattern, description)
+
+        if match:
+            method_name, module_name, class_name = match.groups()
+            result.update({
+                'method_name': method_name,
+                'test_module': module_name,
+                'test_class': class_name,
+                'file_path': f"{module_name}.py",
+                'enhanced_message': f"{method_name} failed in {class_name} ({module_name}.py)"
+            })
+        else:
+            # Try to extract class and module from other patterns
+            # Pattern like "module.ClassName"
+            class_pattern = r'([^.]+)\.([^.]+)$'
+            match = re.search(class_pattern, description)
+            if match:
+                module_name, class_name = match.groups()
+                result.update({
+                    'test_module': module_name,
+                    'test_class': class_name,
+                    'file_path': f"{module_name}.py",
+                    'enhanced_message': f"Import failed for {class_name} in {module_name}.py"
+                })
+
+        return result
 
 
 class TestRunner:
     """Core test runner for wobble framework."""
-    
-    def __init__(self, output_formatter: OutputFormatter):
+
+    def __init__(self, output_formatter: Union[OutputFormatter, EnhancedOutputFormatter]):
         """Initialize the test runner.
-        
+
         Args:
             output_formatter: Output formatter instance for test results
         """
         self.output_formatter = output_formatter
         self.total_start_time = None
+        self.enhanced_mode = isinstance(output_formatter, EnhancedOutputFormatter)
         
     def run_tests(self, test_infos: List[Dict]) -> Dict[str, Any]:
         """Run a list of tests and return results.
@@ -145,10 +315,25 @@ class TestRunner:
         
         # Create custom test result
         result = WobbleTestResult(self.output_formatter)
-        
-        # Print test run header
-        self.output_formatter.print_test_run_header(len(test_infos))
-        
+
+        # Start test run (enhanced mode handles command reconstruction)
+        if self.enhanced_mode:
+            # Try to reconstruct the command from CLI args
+            try:
+                import sys
+                # Parse current command line arguments
+                from .cli import create_parser
+                parser = create_parser()
+                args = parser.parse_args(sys.argv[1:])
+
+                from .cli import reconstruct_command
+                command = reconstruct_command(args)
+            except:
+                command = "wobble"  # Fallback
+            self.output_formatter.start_test_run(command, len(test_infos))
+        else:
+            self.output_formatter.print_test_run_header(len(test_infos))
+
         # Run tests
         self.total_start_time = time.time()
         suite.run(result)
@@ -160,6 +345,11 @@ class TestRunner:
             successful_tests = result.testsRun - len(result.failures) - len(result.errors)
             success_rate = (successful_tests / result.testsRun) * 100.0
         
+        # End test run for enhanced mode
+        if self.enhanced_mode:
+            exit_code = 1 if (len(result.failures) > 0 or len(result.errors) > 0) else 0
+            self.output_formatter.end_test_run(exit_code)
+
         # Compile results
         results = {
             'tests_run': result.testsRun,
@@ -174,7 +364,7 @@ class TestRunner:
             'error_details': result.errors,
             'skip_details': result.skipped
         }
-        
+
         return results
     
     def _create_test_suite(self, test_infos: List[Dict]) -> unittest.TestSuite:
@@ -290,16 +480,31 @@ class TestRunner:
     
     def _get_test_name(self, test_case) -> str:
         """Get a readable name for a test case.
-        
+
         Args:
-            test_case: unittest.TestCase instance
-            
+            test_case: unittest.TestCase instance or _ErrorHolder
+
         Returns:
             Human-readable test name
         """
-        if hasattr(test_case, '_testMethodName'):
+        if self._is_error_holder(test_case):
+            # For _ErrorHolder objects, create enhanced error message
+            enhanced_info = self._parse_error_holder_description(test_case.description)
+            return f"ImportError: {enhanced_info['enhanced_message']}"
+        elif hasattr(test_case, '_testMethodName'):
             class_name = test_case.__class__.__name__
             method_name = test_case._testMethodName
             return f"{class_name}.{method_name}"
-        
+
         return str(test_case)
+
+    def _is_error_holder(self, test_case) -> bool:
+        """Check if test case is an _ErrorHolder representing import/loading failure.
+
+        Args:
+            test_case: The test case object to check
+
+        Returns:
+            True if this is an _ErrorHolder, False otherwise
+        """
+        return test_case.__class__.__name__ == '_ErrorHolder'

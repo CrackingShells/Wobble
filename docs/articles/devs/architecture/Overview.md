@@ -11,12 +11,16 @@ Wobble follows a modular architecture with clear separation of concerns:
 
 ```
 wobble/
-├── __init__.py          # Package initialization and public API
-├── decorators.py        # Test categorization decorators
-├── discovery.py         # Test discovery engine
-├── runner.py           # Test execution engine
-├── output.py           # Output formatting and display
-└── cli.py              # Command-line interface
+├── __init__.py              # Package initialization and public API
+├── decorators.py            # Test categorization decorators
+├── discovery.py             # Test discovery engine
+├── runner.py               # Test execution engine
+├── output.py               # Output formatting and display
+├── output_architecture.py  # Observer + Strategy pattern output system
+├── file_io.py              # Threaded file writing system
+├── enhanced_output.py      # Enhanced output formatter with file support
+├── data_structures.py      # Test result data structures and formatting
+└── cli.py                  # Command-line interface
 ```
 
 ## Core Components
@@ -123,6 +127,36 @@ def supports_decorator_structure() -> bool
 - **Facade Pattern**: Simplified interface to complex subsystems
 - **Command Pattern**: CLI operations as discrete commands
 - **Chain of Responsibility**: Argument processing pipeline
+
+### File I/O Architecture (`file_io.py`, `output_architecture.py`)
+
+**Responsibility**: Provide concurrent file output with multiple format support.
+
+**Key Components**:
+- `ThreadedFileWriter`: Background file writing with queue-based operations
+- `OutputObserver`: Observer pattern for multi-destination output coordination
+- `OutputStrategy`: Strategy pattern for format-specific output generation
+
+**Design Patterns**:
+- **Observer Pattern**: Multi-destination output coordination (console + file)
+- **Strategy Pattern**: Format-specific output strategies (JSON, text, auto)
+- **Producer-Consumer Pattern**: Threaded file writing with queue management
+- **Template Method Pattern**: Common file output workflow with format variations
+
+**Key Features**:
+- Non-blocking file I/O during test execution
+- Ordered result writing with thread safety
+- Multiple output destinations (console + file simultaneously)
+- Format-specific strategies with auto-detection
+- Graceful error handling and resource cleanup
+
+**Threading Architecture**:
+```python
+# Main thread: Test execution and console output
+# Background thread: File writing operations
+# Queue-based communication: Ordered result processing
+# Shutdown coordination: Clean resource cleanup
+```
 
 ## Component Interactions
 

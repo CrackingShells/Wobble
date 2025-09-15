@@ -46,14 +46,27 @@ class OutputFormatter:
         self.verbosity = verbosity
         self.quiet = quiet
         
-        # Status icons
-        self.icons = {
-            'pass': '✓' if self.use_color else 'PASS',
-            'fail': '✗' if self.use_color else 'FAIL',
-            'error': '⚠' if self.use_color else 'ERROR',
-            'skip': '⊝' if self.use_color else 'SKIP',
-            'info': 'ℹ' if self.use_color else 'INFO'
-        }
+        # Status icons - use Unicode symbols with ASCII fallback for encoding issues
+        try:
+            # Test if Unicode symbols can be encoded
+            test_symbols = '✓✗💥⊝ℹ'
+            test_symbols.encode(sys.stdout.encoding or 'utf-8')
+            self.icons = {
+                'pass': '✓',
+                'fail': '✗',
+                'error': '💥',
+                'skip': '⊝',
+                'info': 'ℹ'
+            }
+        except (UnicodeEncodeError, LookupError):
+            # Fallback to ASCII if Unicode symbols can't be encoded
+            self.icons = {
+                'pass': 'PASS',
+                'fail': 'FAIL',
+                'error': 'ERROR',
+                'skip': 'SKIP',
+                'info': 'INFO'
+            }
         
         # Colors
         self.colors = {
@@ -86,18 +99,26 @@ class OutputFormatter:
     
     def print_test_start(self, test_case) -> None:
         """Print test start information.
-        
+
         Args:
             test_case: unittest.TestCase instance
         """
-        if self.quiet or self.verbosity < 2:
+        if self.quiet:
             return
-        
+
         if self.format_type == 'json':
             return
-        
+
         test_name = self._get_test_name(test_case)
-        print(f"  Starting: {test_name}")
+        # Always show test start for debugging hanging tests
+        # Use different format based on verbosity
+        if self.verbosity >= 2:
+            print(f"  Starting: {test_name}")
+        elif self.verbosity >= 1:
+            print(f"Starting {test_name}...", end=" ", flush=True)
+        else:
+            # Even at verbosity 0, show minimal progress for hanging test detection
+            print(".", end="", flush=True)
     
     def print_test_success(self, test_case, duration: float) -> None:
         """Print successful test result.
