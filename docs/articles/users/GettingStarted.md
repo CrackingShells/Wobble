@@ -60,14 +60,32 @@ wobble --quiet
 Understand what tests wobble finds in your repository:
 
 ```bash
-# Discover tests without running them
+# Basic discovery (test counts by category)
 wobble --discover-only
+
+# Detailed discovery with uncategorized test listings
+wobble --discover-only --discover-verbosity 2
+
+# Complete discovery with file paths and decorators
+wobble --discover-only --discover-verbosity 3
 
 # List available test categories
 wobble --list-categories
+```
 
-# JSON output for programmatic use
-wobble --discover-only --format json
+### Discovery Output Options
+
+Save discovery results to files for analysis:
+
+```bash
+# Save discovery results to text file
+wobble --discover-only --log-file discovery.txt
+
+# Save as JSON for programmatic use
+wobble --discover-only --log-file discovery.json --log-file-format json
+
+# Different detail levels for console vs file
+wobble --discover-only --discover-verbosity 1 --log-file detailed.json --log-verbosity 3
 ```
 
 ### Category-Based Execution

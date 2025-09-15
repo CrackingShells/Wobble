@@ -290,8 +290,17 @@ wobble --category regression
 ### Test Organization Validation
 
 ```bash
-# Verify test discovery
-wobble --discover-only --format json
+# Basic test discovery with counts
+wobble --discover-only
+
+# Detailed discovery with uncategorized test analysis
+wobble --discover-only --discover-verbosity 2
+
+# Complete discovery report with file paths and decorators
+wobble --discover-only --discover-verbosity 3
+
+# Save discovery analysis to file for review
+wobble --discover-only --log-file organization_analysis.json --log-file-format json --log-verbosity 3
 
 # Check category distribution
 wobble --list-categories

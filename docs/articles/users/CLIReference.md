@@ -179,20 +179,47 @@ wobble --quiet
 Analyze tests without executing them:
 
 ```bash
---discover-only         # Only discover tests, do not run them
---list-categories       # List available test categories and exit
+--discover-only                    # Only discover tests, do not run them
+--discover-verbosity {1,2,3}      # Control discovery output detail level
+--list-categories                  # List available test categories and exit
 ```
+
+### Discovery Verbosity Levels
+
+Control the amount of detail in discovery output:
+
+- **Level 1 (Default)**: Test counts by category
+- **Level 2**: Level 1 + detailed uncategorized test listings
+- **Level 3**: Level 2 + complete test listings with file paths and decorators
 
 **Examples:**
 ```bash
-# See what tests would be discovered
+# Basic discovery (counts only)
 wobble --discover-only
 
-# Get JSON summary of discovered tests
-wobble --discover-only --format json
+# Show uncategorized test details
+wobble --discover-only --discover-verbosity 2
+
+# Complete discovery report with all details
+wobble --discover-only --discover-verbosity 3
 
 # List available categories
 wobble --list-categories
+```
+
+### Discovery Output Formats
+
+Discovery results can be output in different formats:
+
+```bash
+# Console output with file logging
+wobble --discover-only --log-file discovery.txt
+
+# JSON format for programmatic use
+wobble --discover-only --log-file discovery.json --log-file-format json
+
+# Different verbosity for console vs file
+wobble --discover-only --discover-verbosity 1 --log-file detailed.txt --log-verbosity 3
 ```
 
 ## Repository Options
@@ -301,6 +328,26 @@ wobble --log-file detailed.json --log-verbosity 2
 # Level 3: Full information including error traces
 wobble --log-file complete.json --log-verbosity 3
 ```
+
+### Discovery Mode File Output
+
+When using `--discover-only`, file output behavior adapts to discovery mode:
+
+```bash
+# Discovery with independent console/file verbosity
+wobble --discover-only --discover-verbosity 1 --log-file discovery.json --log-verbosity 3
+
+# JSON discovery output with complete test details
+wobble --discover-only --log-file discovery.json --log-file-format json --log-verbosity 3
+
+# Text discovery output with basic counts
+wobble --discover-only --log-file discovery.txt --log-file-format txt --log-verbosity 1
+```
+
+**Discovery Verbosity Mapping:**
+- `--log-verbosity 1`: Test counts by category
+- `--log-verbosity 2`: Counts + uncategorized test details
+- `--log-verbosity 3`: Complete test listings with file paths and decorators
 
 ### File Management Options
 
