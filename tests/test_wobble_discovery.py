@@ -9,6 +9,7 @@ import tempfile
 import os
 from pathlib import Path
 from wobble.discovery import TestDiscoveryEngine
+from tests.test_data_utils import create_fake_test_directory, cleanup_fake_directory
 
 
 class TestWobbleDiscoveryEngine(unittest.TestCase):
@@ -18,25 +19,10 @@ class TestWobbleDiscoveryEngine(unittest.TestCase):
         """Set up test environment."""
         self.temp_dir = tempfile.mkdtemp()
         self.discovery_engine = TestDiscoveryEngine(self.temp_dir)
-        # Generate unique module name for this test instance
-        import uuid
-        self.unique_id = str(uuid.uuid4())[:8]
     
     def tearDown(self):
         """Clean up test environment."""
-        import shutil
-        import sys
-        
-        # Clean up any modules that may have been imported from temp directories
-        modules_to_remove = []
-        for module_name in sys.modules:
-            if self.temp_dir in str(sys.modules[module_name].__file__ if hasattr(sys.modules[module_name], '__file__') and sys.modules[module_name].__file__ else ''):
-                modules_to_remove.append(module_name)
-        
-        for module_name in modules_to_remove:
-            del sys.modules[module_name]
-        
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
+        cleanup_fake_directory(Path(self.temp_dir))
     
     def test_discovery_engine_initialization(self):
         """Test that discovery engine initializes correctly."""
@@ -47,76 +33,49 @@ class TestWobbleDiscoveryEngine(unittest.TestCase):
     
     def test_find_test_directories(self):
         """Test finding test directories."""
-        # Create test directory structure
-        test_dir = Path(self.temp_dir) / "tests"
-        test_dir.mkdir()
-        
-        # Create a test file with unique name
-        test_file = test_dir / f"test_sample_{self.unique_id}.py"
-        test_file.write_text(f"""
-import unittest
+        # Create fake test directory using centralized utilities
+        fake_test_dir = create_fake_test_directory('mixed_categories', Path(self.temp_dir))
 
-class TestSample{self.unique_id.title()}(unittest.TestCase):
-    def test_example(self):
-        self.assertTrue(True)
-""")
-        
+        # Update discovery engine to use the fake test directory
+        self.discovery_engine = TestDiscoveryEngine(str(fake_test_dir))
+
         # Test discovery
         test_dirs = self.discovery_engine._find_test_directories()
-        
+
         # Should find the tests directory
-        self.assertTrue(any(str(test_dir) in str(d) for d in test_dirs))
+        tests_dir = fake_test_dir / "tests"
+        self.assertTrue(any(str(tests_dir) in str(d) for d in test_dirs))
+
+        # Clean up
+        cleanup_fake_directory(fake_test_dir)
     
     def test_supports_hierarchical_structure_detection(self):
         """Test detection of hierarchical test structure."""
-        # Create hierarchical structure
-        base_tests = Path(self.temp_dir) / "tests"
-        base_tests.mkdir()
-        
-        regression_dir = base_tests / "regression"
-        regression_dir.mkdir()
-        
-        integration_dir = base_tests / "integration"
-        integration_dir.mkdir()
-        
-        # Create test files with unique names
-        (regression_dir / f"test_core_{self.unique_id}.py").write_text(f"""
-import unittest
-class TestCore{self.unique_id.title()}(unittest.TestCase):
-    def test_functionality(self):
-        pass
-""")
-        
-        (integration_dir / f"test_api_{self.unique_id}.py").write_text(f"""
-import unittest
-class TestAPI{self.unique_id.title()}(unittest.TestCase):
-    def test_endpoint(self):
-        pass
-""")
-        
+        # Create fake hierarchical test directory using centralized utilities
+        fake_test_dir = create_fake_test_directory('mixed_categories', Path(self.temp_dir))
+
+        # Update discovery engine to use the fake test directory
+        self.discovery_engine = TestDiscoveryEngine(str(fake_test_dir))
+
         # Test hierarchical detection
         self.assertTrue(self.discovery_engine.supports_hierarchical_structure())
+
+        # Clean up
+        cleanup_fake_directory(fake_test_dir)
     
     def test_get_test_count_summary(self):
         """Test getting test count summary."""
-        # Create a simple test structure
-        test_dir = Path(self.temp_dir) / "tests"
-        test_dir.mkdir()
-        
-        test_file = test_dir / f"test_sample_{self.unique_id}.py"
-        test_file.write_text(f"""
-import unittest
+        # Create fake test directory using centralized utilities
+        fake_test_dir = create_fake_test_directory('mixed_categories', Path(self.temp_dir))
 
-class TestSample{self.unique_id.title()}(unittest.TestCase):
-    def test_one(self):
-        self.assertTrue(True)
-    
-    def test_two(self):
-        self.assertTrue(True)
-""")
-        
+        # Update discovery engine to use the fake test directory
+        self.discovery_engine = TestDiscoveryEngine(str(fake_test_dir))
+
         # Get summary
         summary = self.discovery_engine.get_test_count_summary()
+
+        # Clean up
+        cleanup_fake_directory(fake_test_dir)
         
         # Should have discovered tests
         total_tests = sum(summary.values())
