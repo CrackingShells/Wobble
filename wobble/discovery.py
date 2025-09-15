@@ -343,15 +343,89 @@ class TestDiscoveryEngine:
     
     def get_test_count_summary(self) -> Dict[str, int]:
         """Get a summary of test counts by category.
-        
+
         Returns:
             Dictionary with category names and test counts
         """
         if not self.discovered_tests:
             self.discover_tests()
-        
+
         categorized = self._categorize_tests()
         return {category: len(tests) for category, tests in categorized.items()}
+
+    def get_discovery_output(self, verbosity: int = 1) -> str:
+        """Get formatted discovery output based on verbosity level.
+
+        Args:
+            verbosity: Output verbosity level (1=counts only, 2=uncategorized details, 3=all details)
+
+        Returns:
+            Formatted discovery output string
+        """
+        if not self.discovered_tests:
+            self.discover_tests()
+
+        categorized = self._categorize_tests()
+        summary = {category: len(tests) for category, tests in categorized.items()}
+        total_tests = sum(summary.values())
+
+        output_lines = []
+
+        # Level 1: Counts only (default behavior)
+        output_lines.append(f"Total tests discovered: {total_tests}")
+
+        for category in ['regression', 'integration', 'development', 'slow', 'skip_ci', 'uncategorized']:
+            count = summary.get(category, 0)
+            if count > 0:
+                output_lines.append(f"{category.title()}: {count}")
+
+        # Level 2: Add uncategorized test details
+        if verbosity >= 2 and 'uncategorized' in categorized and categorized['uncategorized']:
+            output_lines.append("\nUncategorized tests:")
+            for test_info in categorized['uncategorized']:
+                test_name = f"{test_info['test_class']}.{test_info['test_method']}"
+                file_path = test_info.get('file_path', 'unknown')
+                output_lines.append(f"  {test_name} ({file_path})")
+
+        # Level 3: Add all test details
+        if verbosity >= 3:
+            for category in ['regression', 'integration', 'development', 'slow', 'skip_ci']:
+                if category in categorized and categorized[category]:
+                    output_lines.append(f"\n{category.title()} tests:")
+                    for test_info in categorized[category]:
+                        test_name = f"{test_info['test_class']}.{test_info['test_method']}"
+                        file_path = test_info.get('file_path', 'unknown')
+                        decorators = self._get_wobble_decorators(test_info)
+                        decorator_str = f" [{', '.join(decorators)}]" if decorators else ""
+                        output_lines.append(f"  {test_name} ({file_path}){decorator_str}")
+
+        return "\n".join(output_lines)
+
+    def _get_wobble_decorators(self, test_info: Dict) -> List[str]:
+        """Extract Wobble decorator names from test info.
+
+        Args:
+            test_info: Test information dictionary
+
+        Returns:
+            List of Wobble decorator names
+        """
+        decorators = []
+        metadata = test_info.get('metadata', {})
+
+        # Check for Wobble-specific decorators
+        if metadata.get('regression'):
+            decorators.append('@regression_test')
+        if metadata.get('integration'):
+            decorators.append('@integration_test')
+        if metadata.get('development'):
+            decorators.append('@development_test')
+        if metadata.get('slow'):
+            decorators.append('@slow_test')
+        if metadata.get('skip_ci'):
+            decorators.append('@skip_ci')
+
+        return decorators
     
     def filter_tests(self, 
                     categories: Optional[List[str]] = None,

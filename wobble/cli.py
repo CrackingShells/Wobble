@@ -82,7 +82,15 @@ Examples:
         action='store_true',
         help='Only discover tests, do not run them'
     )
-    
+
+    parser.add_argument(
+        '--discover-verbosity',
+        type=int,
+        choices=[1, 2, 3],
+        default=1,
+        help='Discovery output verbosity (1=counts only, 2=uncategorized details, 3=all details)'
+    )
+
     parser.add_argument(
         '--list-categories',
         action='store_true',
@@ -273,6 +281,8 @@ def reconstruct_command(args: argparse.Namespace) -> str:
         command_parts.append('--no-color')
     if args.discover_only:
         command_parts.append('--discover-only')
+        if args.discover_verbosity != 1:  # Only add if not default
+            command_parts.append(f'--discover-verbosity {args.discover_verbosity}')
     if args.list_categories:
         command_parts.append('--list-categories')
     if args.quiet:
@@ -366,7 +376,9 @@ def main() -> int:
         
         # Handle discover-only option
         if args.discover_only:
-            output_formatter.print_discovery_summary(discovered_tests)
+            # Use new discovery verbosity output
+            discovery_output = discovery_engine.get_discovery_output(verbosity=args.discover_verbosity)
+            print(discovery_output)
             return 0
         
         # Filter tests based on arguments
