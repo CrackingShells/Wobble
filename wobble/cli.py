@@ -33,6 +33,9 @@ Examples:
   wobble --exclude-slow          # Skip slow tests
   wobble --format json           # Output results in JSON format
   wobble --discover-only         # Only discover tests, don't run them
+  wobble --discover-only --discover-verbosity 2  # Show uncategorized test details
+  wobble --discover-only --discover-verbosity 3  # Show all tests with decorators
+  wobble --verbose               # Run tests with decorator display
         """
     )
     

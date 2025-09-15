@@ -37,6 +37,14 @@ wobble --log-file test_results.json
 # CI/CD integration with file output
 wobble --format json --log-file ci_results.json --log-verbosity 3
 
+# Enhanced test discovery
+wobble --discover-only                    # Show test counts by category
+wobble --discover-only --discover-verbosity 2  # Show uncategorized test details
+wobble --discover-only --discover-verbosity 3  # Show all tests with decorators
+
+# Test execution with decorator display
+wobble --verbose                          # Shows [@decorator_name] for each test
+
 # Get help
 wobble --help
 ```
@@ -72,6 +80,27 @@ wobble --verbose
 # Alternative: use unittest directly
 python -m unittest discover tests
 ```
+
+### Enhanced Discovery Features
+
+Wobble provides enhanced test discovery with multiple verbosity levels and decorator display:
+
+```bash
+# Discovery verbosity levels
+wobble --discover-only --discover-verbosity 1  # Test counts by category (default)
+wobble --discover-only --discover-verbosity 2  # + Uncategorized test details
+wobble --discover-only --discover-verbosity 3  # + All tests with decorator info
+
+# Test execution with decorator display
+wobble --verbose                                # Shows [@decorator_name] for tests
+wobble --category regression --verbose          # Regression tests with decorators
+```
+
+**Decorator Display Examples:**
+- `[@regression_test]` - Regression test
+- `[@integration_test]` - Integration test
+- `[@slow_test]` - Slow-running test
+- `[@regression_test, @slow_test]` - Multiple decorators
 
 ### Making Commits
 
