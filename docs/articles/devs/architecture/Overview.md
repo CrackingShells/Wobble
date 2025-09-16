@@ -27,24 +27,89 @@ wobble/
 
 ### Test Discovery Engine (`discovery.py`)
 
-**Responsibility**: Locate and categorize tests across different repository structures.
+**Responsibility**: Locate and categorize tests across different repository structures with enhanced logging and file output capabilities.
 
 **Key Classes**:
-- `TestDiscoveryEngine`: Main discovery coordinator
+- `TestDiscoveryEngine`: Main discovery coordinator with progressive verbosity support
 - Supports hierarchical (`tests/regression/`) and flat (decorator-based) structures
 - Provides filtering capabilities by category, performance, and environment
+- Implements structured data output for JSON serialization and file integration
 
 **Design Patterns**:
 - **Strategy Pattern**: Different discovery strategies for hierarchical vs. flat structures
 - **Factory Pattern**: Test suite creation from discovered test information
 - **Filter Pattern**: Composable test filtering by multiple criteria
+- **Observer Pattern**: Integration with file output system for dual console/file logging
+
+**Enhanced Discovery Features**:
+- **Progressive Verbosity**: Three levels of detail with distinct JSON structures:
+  - Level 1: Basic counts only (`categories` field)
+  - Level 2: Level 1 + `uncategorized` field with test details
+  - Level 3: Level 1 + `tests_by_category` field with complete test listings
+- **File Path Detection**: Automatic detection and formatting of test file locations
+- **JSON Serialization**: Structured data output compatible with programmatic analysis
+- **Decorator Information**: Complete decorator metadata in detailed discovery output
 
 **Key Methods**:
 ```python
 def discover_tests(pattern: str) -> Dict[str, List]
 def filter_tests(categories: List[str], exclude_slow: bool, exclude_ci: bool) -> List[Dict]
+def get_discovery_summary(verbosity: int = 1) -> str
+def get_discovery_data(verbosity: int = 1) -> Dict[str, Any]
+def get_test_summary() -> str
 def supports_hierarchical_structure() -> bool
 def supports_decorator_structure() -> bool
+```
+
+**Discovery Data Structure**:
+```python
+{
+    "discovery_summary": {
+        "timestamp": "2025-09-15T10:30:00.123456",
+        "total_tests": 42,
+        "categories": {
+            "regression": 15,
+            "integration": 12,
+            "development": 8,
+            "uncategorized": 7
+        },
+        # Verbosity level 2: uncategorized test details
+        "uncategorized": [  # Only present at verbosity level 2
+            {
+                "name": "test_example",
+                "class": "TestExample",
+                "module": "test_example",
+                "file": "tests/test_example.py",
+                "full_name": "test_example.TestExample.test_example",
+                "decorators": ["@slow_test"]
+            }
+        ],
+
+        # Verbosity level 3: complete test listings by category
+        "tests_by_category": {  # Only present at verbosity level 3
+            "regression": [
+                {
+                    "name": "TestRegression.test_feature",
+                    "class": "TestRegression",
+                    "module": "test_regression",
+                    "file": "tests/test_regression.py",
+                    "full_name": "test_regression.TestRegression.test_feature",
+                    "decorators": ["@regression_test"]
+                }
+            ],
+            "uncategorized": [
+                {
+                    "name": "test_example",
+                    "class": "TestExample",
+                    "module": "test_example",
+                    "file": "tests/test_example.py",
+                    "full_name": "test_example.TestExample.test_example",
+                    "decorators": ["@slow_test"]
+                }
+            ]
+        }
+    }
+}
 ```
 
 ### Decorator System (`decorators.py`)
@@ -149,6 +214,14 @@ def supports_decorator_structure() -> bool
 - Multiple output destinations (console + file simultaneously)
 - Format-specific strategies with auto-detection
 - Graceful error handling and resource cleanup
+- Discovery mode integration with independent verbosity control
+
+**Discovery Integration**:
+- Discovery results support both console and file output simultaneously
+- Independent verbosity control: `--discover-verbosity` for console, `--log-verbosity` for file
+- JSON format support for structured discovery data with complete test metadata
+- File path detection and serialization for programmatic analysis
+- Event-driven architecture enables discovery output through observer pattern
 
 **Threading Architecture**:
 ```python

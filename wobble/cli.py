@@ -33,6 +33,9 @@ Examples:
   wobble --exclude-slow          # Skip slow tests
   wobble --format json           # Output results in JSON format
   wobble --discover-only         # Only discover tests, don't run them
+  wobble --discover-only --discover-verbosity 2  # Show uncategorized test details
+  wobble --discover-only --discover-verbosity 3  # Show all tests with decorators
+  wobble --verbose               # Run tests with decorator display
         """
     )
     
@@ -82,7 +85,15 @@ Examples:
         action='store_true',
         help='Only discover tests, do not run them'
     )
-    
+
+    parser.add_argument(
+        '--discover-verbosity',
+        type=int,
+        choices=[1, 2, 3],
+        default=1,
+        help='Discovery output verbosity (1=counts only, 2=uncategorized details, 3=all details)'
+    )
+
     parser.add_argument(
         '--list-categories',
         action='store_true',
@@ -273,6 +284,8 @@ def reconstruct_command(args: argparse.Namespace) -> str:
         command_parts.append('--no-color')
     if args.discover_only:
         command_parts.append('--discover-only')
+        if args.discover_verbosity != 1:  # Only add if not default
+            command_parts.append(f'--discover-verbosity {args.discover_verbosity}')
     if args.list_categories:
         command_parts.append('--list-categories')
     if args.quiet:
@@ -366,7 +379,18 @@ def main() -> int:
         
         # Handle discover-only option
         if args.discover_only:
-            output_formatter.print_discovery_summary(discovered_tests)
+            # Get discovery data for console output (uses --discover-verbosity)
+            discovery_output = discovery_engine.get_discovery_output(verbosity=args.discover_verbosity)
+
+            # If file outputs are configured, use enhanced formatter for file integration
+            if file_configs:
+                # Get discovery data for file output (uses --log-verbosity)
+                file_discovery_data = discovery_engine.get_discovery_data(verbosity=args.log_verbosity)
+                # Use enhanced formatter to handle both console and file output
+                output_formatter.print_discovery_output(discovery_output, args.log_verbosity, file_discovery_data)
+            else:
+                # Console only output
+                print(discovery_output)
             return 0
         
         # Filter tests based on arguments

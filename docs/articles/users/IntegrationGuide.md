@@ -346,7 +346,15 @@ wobble --format json --exclude-ci
 ```bash
 # Compare test counts
 python -m unittest discover tests --dry-run | wc -l
-wobble --discover-only --format json | jq '.total_tests'
+wobble --discover-only --log-file discovery.json --log-file-format json
+cat discovery.json | jq '.discovery_summary.total_tests'
+
+# Detailed discovery analysis
+wobble --discover-only --discover-verbosity 3 --log-file detailed_discovery.txt
+
+# Validate category distribution
+wobble --discover-only --log-file discovery.json --log-file-format json
+cat discovery.json | jq '.discovery_summary.categories'
 ```
 
 **Execution validation**:

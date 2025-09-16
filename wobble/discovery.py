@@ -7,7 +7,8 @@ different repository structures and organizational patterns.
 import os
 import unittest
 from pathlib import Path
-from typing import List, Dict, Set, Optional, Tuple
+from typing import List, Dict, Set, Optional, Tuple, Any
+from datetime import datetime
 from .decorators import get_test_metadata, has_wobble_metadata
 
 
@@ -287,6 +288,37 @@ class TestDiscoveryEngine:
             # Try to determine file path
             if hasattr(test_case.__class__, '__file__'):
                 test_info['file_path'] = Path(test_case.__class__.__file__)
+            else:
+                # Fallback: construct file path from module name and directory
+                module_name = test_case.__class__.__module__
+                if module_name:
+                    # Handle different module name patterns
+                    if '.' in module_name:
+                        # For modules like 'development.test_development' or 'test_auth'
+                        parts = module_name.split('.')
+                        if len(parts) >= 2:
+                            # Try subdirectory structure: development/test_development.py
+                            subdir = parts[0]
+                            module_file = parts[1]
+                            potential_file = directory / subdir / f"{module_file}.py"
+                            if potential_file.exists():
+                                test_info['file_path'] = potential_file
+                            else:
+                                # Try flat structure: test_development.py
+                                potential_file = directory / f"{module_file}.py"
+                                if potential_file.exists():
+                                    test_info['file_path'] = potential_file
+                        else:
+                            # Single part module name
+                            module_file = parts[0]
+                            potential_file = directory / f"{module_file}.py"
+                            if potential_file.exists():
+                                test_info['file_path'] = potential_file
+                    else:
+                        # No dots in module name
+                        potential_file = directory / f"{module_name}.py"
+                        if potential_file.exists():
+                            test_info['file_path'] = potential_file
                 
         except AttributeError:
             pass
@@ -343,15 +375,173 @@ class TestDiscoveryEngine:
     
     def get_test_count_summary(self) -> Dict[str, int]:
         """Get a summary of test counts by category.
-        
+
         Returns:
             Dictionary with category names and test counts
         """
         if not self.discovered_tests:
             self.discover_tests()
-        
+
         categorized = self._categorize_tests()
         return {category: len(tests) for category, tests in categorized.items()}
+
+    def get_discovery_output(self, verbosity: int = 1) -> str:
+        """Get formatted discovery output based on verbosity level.
+
+        Args:
+            verbosity: Output verbosity level (1=counts only, 2=uncategorized details, 3=all details)
+
+        Returns:
+            Formatted discovery output string
+        """
+        if not self.discovered_tests:
+            self.discover_tests()
+
+        categorized = self._categorize_tests()
+        summary = {category: len(tests) for category, tests in categorized.items()}
+        total_tests = sum(summary.values())
+
+        output_lines = []
+
+        # Level 1: Counts only (default behavior)
+        output_lines.append(f"Total tests discovered: {total_tests}")
+
+        for category in ['regression', 'integration', 'development', 'slow', 'skip_ci', 'uncategorized']:
+            count = summary.get(category, 0)
+            if count > 0:
+                output_lines.append(f"{category.title()}: {count}")
+
+        # Level 2: Add uncategorized test details
+        if verbosity >= 2 and 'uncategorized' in categorized and categorized['uncategorized']:
+            output_lines.append("\nUncategorized tests:")
+            for test_info in categorized['uncategorized']:
+                test_name = f"{test_info['test_class']}.{test_info['test_method']}"
+                file_path = test_info.get('file_path', 'unknown')
+                output_lines.append(f"  {test_name} ({file_path})")
+
+        # Level 3: Add all test details
+        if verbosity >= 3:
+            for category in ['regression', 'integration', 'development', 'slow', 'skip_ci']:
+                if category in categorized and categorized[category]:
+                    output_lines.append(f"\n{category.title()} tests:")
+                    for test_info in categorized[category]:
+                        # Format as: tests/test_auth.py::TestAuth::test_valid_login
+                        file_path = test_info.get('file_path', 'unknown')
+                        if file_path != 'unknown' and file_path:
+                            # Convert absolute path to relative path starting with tests/
+                            file_path_obj = Path(file_path)
+                            if 'tests' in file_path_obj.parts:
+                                tests_index = file_path_obj.parts.index('tests')
+                                relative_path = Path(*file_path_obj.parts[tests_index:])
+                                test_name = f"{relative_path}::{test_info['test_class']}::{test_info['test_method']}"
+                            else:
+                                test_name = f"{file_path_obj.name}::{test_info['test_class']}::{test_info['test_method']}"
+                        else:
+                            test_name = f"{test_info['test_class']}.{test_info['test_method']}"
+
+                        decorators = self._get_wobble_decorators(test_info)
+                        decorator_str = f" [{', '.join(decorators)}]" if decorators else ""
+                        output_lines.append(f"  {test_name}{decorator_str}")
+
+        return "\n".join(output_lines)
+
+    def get_discovery_data(self, verbosity: int = 1) -> Dict[str, Any]:
+        """Get structured discovery data for JSON formatting.
+
+        Args:
+            verbosity: Output verbosity level (1=counts only, 2=uncategorized details, 3=all details)
+
+        Returns:
+            Structured discovery data dictionary
+        """
+        if not self.discovered_tests:
+            self.discover_tests()
+
+        categorized = self._categorize_tests()
+        summary = {category: len(tests) for category, tests in categorized.items()}
+        total_tests = sum(summary.values())
+
+        # Base data structure matching design specification section 1.3
+        discovery_data = {
+            "discovery_summary": {
+                "timestamp": datetime.now().isoformat(),
+                "total_tests": total_tests,
+                "categories": summary
+            }
+        }
+
+        # Level 2: Add uncategorized test details (only if not level 3)
+        if verbosity == 2 and 'uncategorized' in categorized and categorized['uncategorized']:
+            uncategorized_tests = []
+            for test_info in categorized['uncategorized']:
+                # Convert file path to string for JSON serialization
+                file_path = test_info.get('file_path', 'unknown')
+                file_str = str(file_path) if file_path and file_path != 'unknown' else 'unknown'
+
+                test_data = {
+                    "name": f"{test_info['test_class']}.{test_info['test_method']}",
+                    "class": test_info['test_class'],
+                    "method": test_info['test_method'],
+                    "module": test_info.get('module', 'unknown'),
+                    "file": file_str,
+                    "full_name": f"{test_info.get('module', 'unknown')}.{test_info['test_class']}.{test_info['test_method']}"
+                }
+                uncategorized_tests.append(test_data)
+            discovery_data["discovery_summary"]["uncategorized"] = uncategorized_tests
+
+        # Level 3: Add all test details by category
+        if verbosity >= 3:
+            tests_by_category = {}
+            for category in ['regression', 'integration', 'development', 'slow', 'skip_ci', 'uncategorized']:
+                if category in categorized and categorized[category]:
+                    category_tests = []
+                    for test_info in categorized[category]:
+                        decorators = self._get_wobble_decorators(test_info)
+
+                        # Convert file path to string for JSON serialization
+                        file_path = test_info.get('file_path', 'unknown')
+                        file_str = str(file_path) if file_path and file_path != 'unknown' else 'unknown'
+
+                        test_data = {
+                            "name": f"{test_info['test_class']}.{test_info['test_method']}",
+                            "class": test_info['test_class'],
+                            "method": test_info['test_method'],
+                            "module": test_info.get('module', 'unknown'),
+                            "file": file_str,
+                            "full_name": f"{test_info.get('module', 'unknown')}.{test_info['test_class']}.{test_info['test_method']}",
+                            "decorators": decorators
+                        }
+                        category_tests.append(test_data)
+                    tests_by_category[category] = category_tests
+            discovery_data["discovery_summary"]["tests_by_category"] = tests_by_category
+
+        return discovery_data
+
+    def _get_wobble_decorators(self, test_info: Dict) -> List[str]:
+        """Extract Wobble decorator names from test info.
+
+        Args:
+            test_info: Test information dictionary
+
+        Returns:
+            List of Wobble decorator names
+        """
+        decorators = []
+        metadata = test_info.get('metadata', {})
+
+        # Check for Wobble-specific decorators
+        if metadata.get('regression'):
+            decorators.append('@regression_test')
+        if metadata.get('integration'):
+            decorators.append('@integration_test')
+        if metadata.get('development'):
+            decorators.append('@development_test')
+        if metadata.get('slow'):
+            decorators.append('@slow_test')
+        if metadata.get('skip_ci'):
+            decorators.append('@skip_ci')
+
+        return decorators
     
     def filter_tests(self, 
                     categories: Optional[List[str]] = None,

@@ -17,6 +17,9 @@ from wobble.data_structures import (
     TestStatus, ErrorInfo, TestResult, TestRunSummary,
     TestResultEncoder, serialize_test_results, format_test_results_text
 )
+from tests.test_data_utils import (
+    get_test_result_template, get_timing_config, get_command_template
+)
 
 
 class TestTestStatus(unittest.TestCase):
@@ -35,15 +38,18 @@ class TestErrorInfo(unittest.TestCase):
     
     def test_error_info_creation(self):
         """Test basic ErrorInfo creation."""
+        # Get error info template from centralized test data
+        error_template = get_test_result_template('with_error_info')['error_info']
+
         error = ErrorInfo(
-            type="AssertionError",
-            message="Expected 5, got 3",
-            traceback="Traceback (most recent call last)..."
+            type=error_template['type'],
+            message=error_template['message'],
+            traceback=error_template['traceback']
         )
-        
-        self.assertEqual(error.type, "AssertionError")
-        self.assertEqual(error.message, "Expected 5, got 3")
-        self.assertEqual(error.traceback, "Traceback (most recent call last)...")
+
+        self.assertEqual(error.type, error_template['type'])
+        self.assertEqual(error.message, error_template['message'])
+        self.assertEqual(error.traceback, error_template['traceback'])
         self.assertIsNone(error.file_path)
         self.assertIsNone(error.line_number)
     
@@ -116,27 +122,35 @@ class TestTestResult(unittest.TestCase):
     
     def setUp(self):
         """Set up test fixtures."""
-        self.timestamp = datetime(2024, 1, 15, 14, 30, 25)
+        # Get standard timestamp from centralized test data
+        timestamp_str = get_timing_config('standard_timestamp')
+        self.timestamp = datetime.fromisoformat(timestamp_str)
+
+        # Get error info template from centralized test data
+        error_template = get_test_result_template('with_error_info')['error_info']
         self.error_info = ErrorInfo(
-            type="AssertionError",
-            message="Expected 5, got 3",
-            traceback="Traceback (most recent call last)..."
+            type=error_template['type'],
+            message=error_template['message'],
+            traceback=error_template['traceback']
         )
     
     def test_test_result_creation(self):
         """Test basic TestResult creation."""
+        # Get test result template from centralized test data
+        template = get_test_result_template('test_example')
+
         result = TestResult(
-            name="test_example",
-            classname="TestClass",
+            name=template['name'],
+            classname=template['classname'],
             status=TestStatus.PASS,
-            duration=0.123,
+            duration=template['duration'],
             timestamp=self.timestamp
         )
-        
-        self.assertEqual(result.name, "test_example")
-        self.assertEqual(result.classname, "TestClass")
+
+        self.assertEqual(result.name, template['name'])
+        self.assertEqual(result.classname, template['classname'])
         self.assertEqual(result.status, TestStatus.PASS)
-        self.assertEqual(result.duration, 0.123)
+        self.assertEqual(result.duration, template['duration'])
         self.assertEqual(result.timestamp, self.timestamp)
         self.assertEqual(result.metadata, {})
         self.assertIsNone(result.error_info)

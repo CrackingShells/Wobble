@@ -8,6 +8,7 @@ import json
 import sys
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
+from .decorators import get_test_metadata
 
 try:
     import colorama
@@ -135,14 +136,15 @@ class OutputFormatter:
         
         test_name = self._get_test_name(test_case)
         duration_str = f"({duration:.3f}s)" if self.verbosity > 0 else ""
-        
+        decorator_str = self._get_wobble_decorators(test_case)
+
         if self.format_type == 'minimal':
             print(".", end="", flush=True)
         else:
             icon = self.icons['pass']
             color = self.colors['pass']
             reset = self.colors['reset']
-            print(f"{color}{icon} {test_name} {duration_str}{reset}")
+            print(f"{color}{icon} {test_name} {duration_str}{decorator_str}{reset}")
     
     def print_test_failure(self, test_case, err_info: Tuple, duration: float) -> None:
         """Print failed test result.
@@ -160,15 +162,16 @@ class OutputFormatter:
         
         test_name = self._get_test_name(test_case)
         duration_str = f"({duration:.3f}s)" if self.verbosity > 0 else ""
-        
+        decorator_str = self._get_wobble_decorators(test_case)
+
         if self.format_type == 'minimal':
             print("F", end="", flush=True)
         else:
             icon = self.icons['fail']
             color = self.colors['fail']
             reset = self.colors['reset']
-            print(f"{color}{icon} {test_name} {duration_str}{reset}")
-            
+            print(f"{color}{icon} {test_name} {duration_str}{decorator_str}{reset}")
+
             if self.verbosity > 0:
                 print(f"    {color}Failure: {err_info[1]}{reset}")
     
@@ -188,15 +191,16 @@ class OutputFormatter:
         
         test_name = self._get_test_name(test_case)
         duration_str = f"({duration:.3f}s)" if self.verbosity > 0 else ""
-        
+        decorator_str = self._get_wobble_decorators(test_case)
+
         if self.format_type == 'minimal':
             print("E", end="", flush=True)
         else:
             icon = self.icons['error']
             color = self.colors['error']
             reset = self.colors['reset']
-            print(f"{color}{icon} {test_name} {duration_str}{reset}")
-            
+            print(f"{color}{icon} {test_name} {duration_str}{decorator_str}{reset}")
+
             if self.verbosity > 0:
                 print(f"    {color}Error: {err_info[1]}{reset}")
     
@@ -216,15 +220,16 @@ class OutputFormatter:
         
         test_name = self._get_test_name(test_case)
         duration_str = f"({duration:.3f}s)" if self.verbosity > 0 else ""
-        
+        decorator_str = self._get_wobble_decorators(test_case)
+
         if self.format_type == 'minimal':
             print("S", end="", flush=True)
         else:
             icon = self.icons['skip']
             color = self.colors['skip']
             reset = self.colors['reset']
-            print(f"{color}{icon} {test_name} {duration_str}{reset}")
-            
+            print(f"{color}{icon} {test_name} {duration_str}{decorator_str}{reset}")
+
             if self.verbosity > 0:
                 print(f"    {color}Skipped: {reason}{reset}")
     
@@ -378,10 +383,10 @@ class OutputFormatter:
     
     def _get_test_name(self, test_case) -> str:
         """Get a readable name for a test case.
-        
+
         Args:
             test_case: unittest.TestCase instance
-            
+
         Returns:
             Human-readable test name
         """
@@ -389,5 +394,41 @@ class OutputFormatter:
             class_name = test_case.__class__.__name__
             method_name = test_case._testMethodName
             return f"{class_name}.{method_name}"
-        
+
         return str(test_case)
+
+    def _get_wobble_decorators(self, test_case) -> str:
+        """Get Wobble decorator information for a test case.
+
+        Args:
+            test_case: unittest.TestCase instance
+
+        Returns:
+            Formatted decorator string or empty string
+        """
+        if not hasattr(test_case, '_testMethodName'):
+            return ""
+
+        try:
+            test_method = getattr(test_case, test_case._testMethodName)
+            metadata = get_test_metadata(test_method)
+
+            decorators = []
+            if metadata.get('regression'):
+                decorators.append('@regression_test')
+            if metadata.get('integration'):
+                decorators.append('@integration_test')
+            if metadata.get('development'):
+                decorators.append('@development_test')
+            if metadata.get('slow'):
+                decorators.append('@slow_test')
+            if metadata.get('skip_ci'):
+                decorators.append('@skip_ci')
+
+            if decorators:
+                return f" [{', '.join(decorators)}]"
+
+        except (AttributeError, TypeError):
+            pass
+
+        return ""

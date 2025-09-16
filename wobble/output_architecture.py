@@ -89,6 +89,19 @@ class OutputStrategy(ABC):
         """
         pass
 
+    @abstractmethod
+    def format_discovery_summary(self, discovery_data: Dict[str, Any], verbosity: int = 1) -> str:
+        """Format discovery summary for output.
+
+        Args:
+            discovery_data: Structured discovery data
+            verbosity: Discovery verbosity level
+
+        Returns:
+            Formatted discovery summary string
+        """
+        pass
+
 
 class StandardOutputStrategy(OutputStrategy):
     """Standard text output formatting strategy."""
@@ -142,6 +155,40 @@ class StandardOutputStrategy(OutputStrategy):
         discovered_tests = discovery_metadata.get('discovered_tests', {})
         for category, tests in discovered_tests.items():
             lines.append(f"{category}: {len(tests)} test(s)")
+
+        return '\n'.join(lines)
+
+    def format_discovery_summary(self, discovery_data: Dict[str, Any], verbosity: int = 1) -> str:
+        """Format discovery summary in standard text format."""
+        summary = discovery_data.get('discovery_summary', {})
+        total_tests = summary.get('total_tests', 0)
+        categories = summary.get('categories', {})
+
+        lines = []
+        lines.append(f"Total tests discovered: {total_tests}")
+
+        # Add category counts
+        for category in ['regression', 'integration', 'development', 'slow', 'skip_ci', 'uncategorized']:
+            count = categories.get(category, 0)
+            if count > 0:
+                lines.append(f"{category.title()}: {count}")
+
+        # Level 2: Add uncategorized test details
+        if verbosity >= 2 and 'uncategorized_tests' in summary:
+            lines.append("\nUncategorized tests:")
+            for test in summary['uncategorized_tests']:
+                lines.append(f"  {test['name']} ({test.get('file', 'unknown')})")
+
+        # Level 3: Add all test details
+        if verbosity >= 3 and 'tests_by_category' in summary:
+            tests_by_category = summary['tests_by_category']
+            for category in ['regression', 'integration', 'development', 'slow', 'skip_ci']:
+                if category in tests_by_category and tests_by_category[category]:
+                    lines.append(f"\n{category.title()} tests:")
+                    for test in tests_by_category[category]:
+                        decorators = test.get('decorators', [])
+                        decorator_str = f" [{', '.join(decorators)}]" if decorators else ""
+                        lines.append(f"  {test['name']} ({test.get('file', 'unknown')}){decorator_str}")
 
         return '\n'.join(lines)
 
@@ -228,6 +275,53 @@ class VerboseOutputStrategy(OutputStrategy):
 
         return '\n'.join(lines)
 
+    def format_discovery_summary(self, discovery_data: Dict[str, Any], verbosity: int = 1) -> str:
+        """Format discovery summary in verbose text format."""
+        summary = discovery_data.get('discovery_summary', {})
+        total_tests = summary.get('total_tests', 0)
+        categories = summary.get('categories', {})
+        timestamp = summary.get('timestamp', datetime.now().isoformat())
+
+        lines = [
+            "=" * 60,
+            "WOBBLE TEST DISCOVERY SUMMARY",
+            "=" * 60,
+            f"Timestamp: {timestamp}",
+            f"Total tests discovered: {total_tests}",
+            "=" * 60,
+            ""
+        ]
+
+        # Add category counts
+        for category in ['regression', 'integration', 'development', 'slow', 'skip_ci', 'uncategorized']:
+            count = categories.get(category, 0)
+            if count > 0:
+                lines.append(f"{category.title()}: {count}")
+
+        # Level 2: Add uncategorized test details
+        if verbosity >= 2 and 'uncategorized_tests' in summary:
+            lines.append("\n" + "=" * 40)
+            lines.append("UNCATEGORIZED TESTS")
+            lines.append("=" * 40)
+            for test in summary['uncategorized_tests']:
+                lines.append(f"  • {test['name']} ({test.get('file', 'unknown')})")
+
+        # Level 3: Add all test details
+        if verbosity >= 3 and 'tests_by_category' in summary:
+            tests_by_category = summary['tests_by_category']
+            for category in ['regression', 'integration', 'development', 'slow', 'skip_ci']:
+                if category in tests_by_category and tests_by_category[category]:
+                    lines.append(f"\n" + "=" * 40)
+                    lines.append(f"{category.upper()} TESTS")
+                    lines.append("=" * 40)
+                    for test in tests_by_category[category]:
+                        decorators = test.get('decorators', [])
+                        decorator_str = f" [{', '.join(decorators)}]" if decorators else ""
+                        lines.append(f"  • {test['name']} ({test.get('file', 'unknown')}){decorator_str}")
+
+        lines.append("\n" + "=" * 60)
+        return '\n'.join(lines)
+
 
 class JSONOutputStrategy(OutputStrategy):
     """JSON output formatting strategy."""
@@ -265,6 +359,12 @@ class JSONOutputStrategy(OutputStrategy):
                 "discovered_tests": discovery_metadata.get('discovered_tests', {})
             }
         }
+        return json.dumps(discovery_data, indent=2)
+
+    def format_discovery_summary(self, discovery_data: Dict[str, Any], verbosity: int = 1) -> str:
+        """Format discovery summary in JSON format."""
+        import json
+        # Return the discovery data directly as JSON (it's already in the correct format)
         return json.dumps(discovery_data, indent=2)
 
 
@@ -431,6 +531,31 @@ class FileOutputObserver(OutputObserver):
                     # Direct file writing for discovery output
                     discovery_text = self.strategy.format_discovery_results(event.metadata)
                     self.file_handle.write(discovery_text + '\n')
+                    self.file_handle.flush()
+
+        elif event.event_type == 'discovery_summary':
+            # Handle discovery summary output (new enhanced discovery feature)
+            discovery_data = event.metadata.get('discovery_data')
+            discovery_output = event.metadata.get('discovery_output', '')
+
+            if discovery_data:
+                # Use strategy to format structured discovery data (supports JSON)
+                formatted_output = self.strategy.format_discovery_summary(discovery_data, event.metadata.get('verbosity', 1))
+                if self.writer:
+                    # Use ThreadedFileWriter for discovery output
+                    self.writer.write_text(formatted_output)
+                else:
+                    # Direct file writing for discovery output
+                    self.file_handle.write(formatted_output + '\n')
+                    self.file_handle.flush()
+            elif discovery_output:
+                # Fallback to plain text output
+                if self.writer:
+                    # Use ThreadedFileWriter for discovery output
+                    self.writer.write_text(discovery_output)
+                else:
+                    # Direct file writing for discovery output
+                    self.file_handle.write(discovery_output + '\n')
                     self.file_handle.flush()
     
     def close(self) -> None:
