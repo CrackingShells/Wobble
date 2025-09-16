@@ -5,6 +5,7 @@ test definition report.
 """
 
 import json
+import os
 import subprocess
 import unittest
 from pathlib import Path
@@ -158,17 +159,20 @@ class TestFileFormatCompliance(WobbleTestBase):
         # Verify: Level 2 specific structure
         summary = json_data['discovery_summary']
         
-        # Should have uncategorized tests for level 2+
+        # Should have uncategorized tests for level 2 (but not tests_by_category)
         if summary['categories'].get('uncategorized', 0) > 0:
-            self.assertIn('uncategorized_tests', summary)
-            uncategorized = summary['uncategorized_tests']
+            self.assertIn('uncategorized', summary)
+            uncategorized = summary['uncategorized']
             self.assertIsInstance(uncategorized, list)
-            
+
             # Verify test structure
             for test in uncategorized:
                 self.assertIsInstance(test, dict)
                 # Should have basic test information
                 self.assertIn('name', test)
+
+        # Level 2 should NOT have tests_by_category (that's level 3 only)
+        self.assertNotIn('tests_by_category', summary)
     
     def test_json_format_level_3_structure(self):
         """Test JSON format level 3 structure with all test details."""
@@ -197,7 +201,10 @@ class TestFileFormatCompliance(WobbleTestBase):
         self.assertIn('tests_by_category', summary)
         tests_by_category = summary['tests_by_category']
         self.assertIsInstance(tests_by_category, dict)
-        
+
+        # Level 3 should NOT have duplicate uncategorized field at root level
+        self.assertNotIn('uncategorized', summary)
+
         # Verify test structure in categories
         for category, tests in tests_by_category.items():
             self.assertIsInstance(tests, list)
@@ -207,6 +214,10 @@ class TestFileFormatCompliance(WobbleTestBase):
                 required_test_fields = ['name', 'class', 'module', 'file']
                 for field in required_test_fields:
                     self.assertIn(field, test, f"Missing test field: {field}")
+
+                # Level 3 tests should have decorators field
+                self.assertIn('decorators', test)
+                self.assertIsInstance(test['decorators'], list)
     
     def test_json_format_unicode_handling(self):
         """Test JSON format handling of unicode characters."""
@@ -245,7 +256,95 @@ class TestFileFormatCompliance(WobbleTestBase):
         # Verify: JSON can be re-parsed (round-trip test)
         reparsed = json.loads(json_str)
         self.assertEqual(json_data, reparsed)
-    
+
+    def test_json_structure_regression_protection(self):
+        """Comprehensive regression test to prevent JSON structure changes."""
+        # Test all verbosity levels to ensure consistent structure
+        for verbosity in [1, 2, 3]:
+            with self.subTest(verbosity=verbosity):
+                temp_file = self.create_temp_file("", suffix=".json")
+
+                # Execute: Generate JSON output
+                result = self.run_discovery_command([
+                    '--discover-only',
+                    '--log-file', temp_file,
+                    '--log-file-format', 'json',
+                    '--log-verbosity', str(verbosity)
+                ])
+
+                self.assertEqual(result.returncode, 0, f"Command failed for verbosity {verbosity}: {result.stderr}")
+
+                # Verify: Valid JSON structure
+                file_content = self.read_file(temp_file)
+                json_data = self.assert_valid_json(file_content)
+
+                # Verify: Required root structure
+                self.assertIn('discovery_summary', json_data)
+                summary = json_data['discovery_summary']
+
+                # Required fields for all verbosity levels
+                required_fields = ['timestamp', 'total_tests', 'categories']
+                for field in required_fields:
+                    self.assertIn(field, summary, f"Missing required field '{field}' at verbosity {verbosity}")
+
+                # Verify: No duplicate data structures
+                if verbosity == 1:
+                    # Level 1: Only basic fields
+                    self.assertNotIn('uncategorized', summary)
+                    self.assertNotIn('tests_by_category', summary)
+                elif verbosity == 2:
+                    # Level 2: Should have uncategorized but NOT tests_by_category
+                    if summary['categories'].get('uncategorized', 0) > 0:
+                        self.assertIn('uncategorized', summary)
+                    self.assertNotIn('tests_by_category', summary)
+                elif verbosity == 3:
+                    # Level 3: Should have tests_by_category but NOT duplicate uncategorized
+                    self.assertIn('tests_by_category', summary)
+                    self.assertNotIn('uncategorized', summary)
+
+                # Clean up
+                os.unlink(temp_file)
+
+    def test_json_field_naming_consistency(self):
+        """Test that all category field names follow consistent naming conventions."""
+        temp_file = self.create_temp_file("", suffix=".json")
+
+        # Execute: Generate JSON output level 3 (most comprehensive)
+        result = self.run_discovery_command([
+            '--discover-only',
+            '--log-file', temp_file,
+            '--log-file-format', 'json',
+            '--log-verbosity', '3'
+        ])
+
+        self.assertEqual(result.returncode, 0, f"Command failed: {result.stderr}")
+
+        # Verify: Valid JSON structure
+        file_content = self.read_file(temp_file)
+        json_data = self.assert_valid_json(file_content)
+
+        summary = json_data['discovery_summary']
+
+        # Verify: Consistent category naming in categories field
+        categories = summary['categories']
+        expected_categories = ['regression', 'integration', 'development', 'uncategorized']
+        for category in expected_categories:
+            if category in categories:
+                # Category names should be consistent (no _tests suffix)
+                self.assertNotIn(f'{category}_tests', categories,
+                    f"Found inconsistent naming: '{category}_tests' should be '{category}'")
+
+        # Verify: Consistent category naming in tests_by_category field
+        if 'tests_by_category' in summary:
+            tests_by_category = summary['tests_by_category']
+            for category in tests_by_category.keys():
+                # Category keys should be consistent (no _tests suffix)
+                self.assertNotIn('_tests', category,
+                    f"Found inconsistent category key: '{category}' should not contain '_tests'")
+
+        # Clean up
+        os.unlink(temp_file)
+
     def test_invalid_format_handling(self):
         """Test handling of invalid format specifications."""
         # Create temporary file for output

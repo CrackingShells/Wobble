@@ -470,8 +470,8 @@ class TestDiscoveryEngine:
             }
         }
 
-        # Level 2: Add uncategorized test details
-        if verbosity >= 2 and 'uncategorized' in categorized and categorized['uncategorized']:
+        # Level 2: Add uncategorized test details (only if not level 3)
+        if verbosity == 2 and 'uncategorized' in categorized and categorized['uncategorized']:
             uncategorized_tests = []
             for test_info in categorized['uncategorized']:
                 # Convert file path to string for JSON serialization
@@ -487,7 +487,7 @@ class TestDiscoveryEngine:
                     "full_name": f"{test_info.get('module', 'unknown')}.{test_info['test_class']}.{test_info['test_method']}"
                 }
                 uncategorized_tests.append(test_data)
-            discovery_data["discovery_summary"]["uncategorized_tests"] = uncategorized_tests
+            discovery_data["discovery_summary"]["uncategorized"] = uncategorized_tests
 
         # Level 3: Add all test details by category
         if verbosity >= 3:
