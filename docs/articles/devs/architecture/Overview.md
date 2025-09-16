@@ -42,7 +42,10 @@ wobble/
 - **Observer Pattern**: Integration with file output system for dual console/file logging
 
 **Enhanced Discovery Features**:
-- **Progressive Verbosity**: Three levels of detail (counts, uncategorized details, complete listings)
+- **Progressive Verbosity**: Three levels of detail with distinct JSON structures:
+  - Level 1: Basic counts only (`categories` field)
+  - Level 2: Level 1 + `uncategorized` field with test details
+  - Level 3: Level 1 + `tests_by_category` field with complete test listings
 - **File Path Detection**: Automatic detection and formatting of test file locations
 - **JSON Serialization**: Structured data output compatible with programmatic analysis
 - **Decorator Information**: Complete decorator metadata in detailed discovery output
@@ -70,12 +73,37 @@ def supports_decorator_structure() -> bool
             "development": 8,
             "uncategorized": 7
         },
-        "test_details": {  # verbosity >= 2
+        # Verbosity level 2: uncategorized test details
+        "uncategorized": [  # Only present at verbosity level 2
+            {
+                "name": "test_example",
+                "class": "TestExample",
+                "module": "test_example",
+                "file": "tests/test_example.py",
+                "full_name": "test_example.TestExample.test_example",
+                "decorators": ["@slow_test"]
+            }
+        ],
+
+        # Verbosity level 3: complete test listings by category
+        "tests_by_category": {  # Only present at verbosity level 3
+            "regression": [
+                {
+                    "name": "TestRegression.test_feature",
+                    "class": "TestRegression",
+                    "module": "test_regression",
+                    "file": "tests/test_regression.py",
+                    "full_name": "test_regression.TestRegression.test_feature",
+                    "decorators": ["@regression_test"]
+                }
+            ],
             "uncategorized": [
                 {
                     "name": "test_example",
                     "class": "TestExample",
-                    "file_path": "tests/test_example.py",
+                    "module": "test_example",
+                    "file": "tests/test_example.py",
+                    "full_name": "test_example.TestExample.test_example",
                     "decorators": ["@slow_test"]
                 }
             ]
