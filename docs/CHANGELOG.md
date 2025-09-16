@@ -1,3 +1,29 @@
+## [0.2.0-dev.3](https://github.com/CrackingShells/Wobble/compare/v0.2.0-dev.2...v0.2.0-dev.3) (2025-09-16)
+
+
+### Features
+
+* implement enhanced discovery and logging with file output integration ([1b0c776](https://github.com/CrackingShells/Wobble/commit/1b0c77621472564443f17367327275a4dd60dc2c))
+* implement enhanced discovery verbosity and Wobble decorator display ([bb21e4e](https://github.com/CrackingShells/Wobble/commit/bb21e4e162906b03f04943b009d1b89f3e5dcbde))
+
+
+### Bug Fixes
+
+* implement missing file output integration for discovery results ([c2a2bb6](https://github.com/CrackingShells/Wobble/commit/c2a2bb612f3611295b4341f79a24a7a7edf85857))
+* resolve critical JSON output structure duplication and naming inconsistency ([ebb8c5a](https://github.com/CrackingShells/Wobble/commit/ebb8c5a916a0b45abacd885cab2dfe9b278de76d))
+
+
+### Documentation
+
+* update architecture documentation to reflect corrected JSON structure ([b151542](https://github.com/CrackingShells/Wobble/commit/b1515426e606ea870eb9ee35de5c37df4763c432))
+* update CLI help and README for enhanced discovery features ([0337953](https://github.com/CrackingShells/Wobble/commit/03379535a821f768e3d2ae1a593182b537489e45))
+* update user and developer documentation for enhanced discovery features ([4fad605](https://github.com/CrackingShells/Wobble/commit/4fad605a40bd8b2225524a6ab46750cd4eb1643d))
+
+
+### Code Refactoring
+
+* **tests:** externalize hardcoded test data to centralized utilities ([5c77c14](https://github.com/CrackingShells/Wobble/commit/5c77c14d2d944319fe2b5724b290f68293005992))
+
 ## [0.2.0-dev.2](https://github.com/CrackingShells/Wobble/compare/v0.2.0-dev.1...v0.2.0-dev.2) (2025-09-15)
 
 
