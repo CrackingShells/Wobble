@@ -3,12 +3,12 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "{{PROJECT_NAME}}"
+name = "wobble"
 version = "0.1.0"
 authors = [
   { name = "Cracking Shells Team" },
 ]
-description = "{{PROJECT_DESCRIPTION}}"
+description = "Centralized testing package for Cracking Shells"
 readme = "README.md"
 requires-python = ">=3.12"
 classifiers = [
@@ -18,8 +18,7 @@ classifiers = [
 ]
 
 dependencies = [
-    # Add project-specific dependencies here
-    # Future: "wobble>=1.0.0" when centralized testing framework is available
+    "colorama>=0.4.6",  # Cross-platform color support
 ]
 
 [project.optional-dependencies]
@@ -30,11 +29,11 @@ dev = [
 
 [project.scripts]
 # Uncomment and modify if this package provides a CLI tool
-# {{PROJECT_NAME}} = "{{PACKAGE_NAME}}.cli:main"
+wobble = "wobble.cli:main"
 
 [project.urls]
-"Homepage" = "https://github.com/CrackingShells/{{PROJECT_NAME}}"
-"Bug Tracker" = "https://github.com/CrackingShells/{{PROJECT_NAME}}/issues"
+"Homepage" = "https://github.com/CrackingShells/Wobble"
+"Bug Tracker" = "https://github.com/CrackingShells/Wobble/issues"
 
 [tool.setuptools]
 package-dir = {"" = "."}

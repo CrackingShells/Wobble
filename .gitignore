@@ -214,4 +214,10 @@ yarn-debug.log*
 yarn-error.log*
 
 # Semantic-release
-.semantic-release/
+.semantic-release/final_test.json
+
+# Test artifacts and temporary files
+test_*.json
+discovery*.json
+discovery*.txt
+*.tmp

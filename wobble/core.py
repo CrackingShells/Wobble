@@ -1,7 +1,7 @@
-"""Core functionality for {{PROJECT_NAME}}.
+"""Core functionality for Wobble.
 
-This module contains the main functionality of the package.
-Add your core classes and functions here.
+This module contains the main functionality of the wobble testing framework.
+Core classes and functions for test discovery, execution, and reporting.
 """
 
 
@@ -15,11 +15,11 @@ def hello_world() -> str:
         str: A greeting message
         
     Example:
-        >>> from {{PACKAGE_NAME}}.core import hello_world
+        >>> from wobble.core import hello_world
         >>> hello_world()
-        'Hello from {{PROJECT_NAME}}!'
+        'Hello from Wobble!'
     """
-    return "Hello from {{PROJECT_NAME}}!"
+    return "Hello from Wobble!"
 
 
 class ExampleClass:
@@ -31,9 +31,9 @@ class ExampleClass:
         name (str): The name associated with this instance
     """
     
-    def __init__(self, name: str = "{{PROJECT_NAME}}"):
+    def __init__(self, name: str = "Wobble"):
         """Initialize the example class.
-        
+
         Args:
             name (str): The name to associate with this instance
         """
@@ -48,9 +48,9 @@ class ExampleClass:
         Example:
             >>> example = ExampleClass("World")
             >>> example.greet()
-            'Hello, World! Welcome to {{PROJECT_NAME}}.'
+            'Hello, World! Welcome to Wobble.'
         """
-        return f"Hello, {self.name}! Welcome to {{PROJECT_NAME}}."
+        return f"Hello, {self.name}! Welcome to Wobble."
     
     def __str__(self) -> str:
         """Return string representation of the instance.
