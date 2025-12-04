@@ -1,56 +1,35 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = [ "setuptools>=61.0" ]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "cs-wobble"
-version = "0.2.0"
-authors = [
-  { name = "Cracking Shells Team" },
-]
+version = "0.2.1-dev.1"
 description = "Centralized testing package for Cracking Shells"
 readme = "README.md"
 requires-python = ">=3.12"
 classifiers = [
-    "Programming Language :: Python :: 3.12",
-    "License :: OSI Approved :: GNU Affero General Public License v3",
-    "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: GNU Affero General Public License v3",
+  "Operating System :: OS Independent"
 ]
+dependencies = [ "colorama>=0.4.6" ]
 
-dependencies = [
-    "colorama>=0.4.6",  # Cross-platform color support
-]
+  [[project.authors]]
+  name = "Cracking Shells Team"
 
-[project.optional-dependencies]
-dev = [
-    # Development dependencies can be added here in future iterations
-    # Examples: "black>=23.0.0", "mypy>=1.0.0", "flake8>=6.0.0"
-]
+  [project.optional-dependencies]
+  dev = [ ]
 
-[project.scripts]
-# Uncomment and modify if this package provides a CLI tool
-wobble = "wobble.cli:main"
+  [project.scripts]
+  wobble = "wobble.cli:main"
 
-[project.urls]
-"Homepage" = "https://github.com/CrackingShells/Wobble"
-"Bug Tracker" = "https://github.com/CrackingShells/Wobble/issues"
+  [project.urls]
+  Homepage = "https://github.com/CrackingShells/Wobble"
+  "Bug Tracker" = "https://github.com/CrackingShells/Wobble/issues"
 
-[tool.setuptools]
-package-dir = {"" = "."}
+[tool.setuptools.package-dir]
+"" = "."
 
 [tool.setuptools.packages.find]
-where = ["."]
-
-# Future: Tool configurations can be added here when code quality tools are adopted
-# [tool.black]
-# line-length = 88
-# target-version = ['py312']
-#
-# [tool.isort]
-# profile = "black"
-# line_length = 88
-#
-# [tool.mypy]
-# python_version = "3.12"
-# warn_return_any = true
-# warn_unused_configs = true
+where = [ "." ]

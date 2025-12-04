@@ -1,3 +1,11 @@
+## <small>0.2.1-dev.1 (2025-12-04)</small>
+
+* fix(ci): project name and current version number ([a240f11](https://github.com/CrackingShells/Wobble/commit/a240f11))
+* chore: npm-audit-fix ([f55d3ef](https://github.com/CrackingShells/Wobble/commit/f55d3ef))
+* ci: add PyPI publishing to semantic-release workflow ([6d1cc91](https://github.com/CrackingShells/Wobble/commit/6d1cc91))
+* ci: switch to sr-uv-plugin for version management ([c481d2b](https://github.com/CrackingShells/Wobble/commit/c481d2b))
+* docs: update installation instructions for PyPI package cs-wobble ([c1f363a](https://github.com/CrackingShells/Wobble/commit/c1f363a))
+
 ## [0.2.0](https://github.com/CrackingShells/Wobble/compare/v0.1.0...v0.2.0) (2025-09-18)
 
 
