@@ -9,6 +9,7 @@
     }
   ],
   "plugins": [
+    "@artessan-devs/sr-uv-plugin",
     [
       "@semantic-release/commit-analyzer",
       {
@@ -57,7 +58,6 @@
         "failComment": false,
         "releasedLabels": false
       }
-    ],
-    "@covage/semantic-release-poetry-plugin"
+    ]
   ]
 }
