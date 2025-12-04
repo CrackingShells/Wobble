@@ -29,7 +29,8 @@ For repositories using `pyproject.toml`:
 ```toml
 [project]
 dependencies = [
-    "wobble @ git+https://github.com/CrackingShells/Wobble.git",
+    "cs-wobble>=0.3.0",  # Use PyPI package
+    # Or for development: "wobble @ git+https://github.com/CrackingShells/Wobble.git",
     # ... other dependencies
 ]
 ```

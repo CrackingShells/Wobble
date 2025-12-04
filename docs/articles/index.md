@@ -67,7 +67,7 @@ Wobble provides a unified testing experience across the CrackingShells organizat
 
 1. **Install wobble** in your repository:
    ```bash
-   pip install wobble
+   pip install cs-wobble
    ```
 
 2. **Run tests** with enhanced output:

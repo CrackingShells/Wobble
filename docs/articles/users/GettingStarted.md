@@ -12,9 +12,15 @@ This article covers:
 
 Wobble requires Python 3.7+ and works with existing unittest-based test suites.
 
+### Install from PyPI
+
+```bash
+pip install cs-wobble
+```
+
 ### Install from Repository
 
-Since wobble is distributed via GitHub repository rather than PyPI:
+For development or to use the latest unreleased features:
 
 ```bash
 # Install directly from repository

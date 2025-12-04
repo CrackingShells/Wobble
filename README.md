@@ -12,10 +12,10 @@ cd Wobble
 pip install -e .
 ```
 
-### From PyPI (when available)
+### From PyPI
 
 ```bash
-pip install wobble
+pip install cs-wobble
 ```
 
 ## Quick Start

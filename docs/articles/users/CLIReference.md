@@ -493,7 +493,7 @@ Configure wobble in your IDE:
 ### Common Issues
 
 **Command not found:**
-- Ensure wobble is installed: `pip install wobble`
+- Ensure wobble is installed: `pip install cs-wobble`
 - Use full module path: `wobble`
 
 **No tests discovered:**
